@@ -226,6 +226,13 @@
     else fly.alt += (0.6 + Math.sin(performance.now() / 700) * 0.2 - fly.alt) * dt * 2;
   }
 
+  function drawFlyShadow(ctx, f) {
+    const s = f.scale * (1 + 0.22 * f.alt);
+    ctx.save(); ctx.translate(f.x + 6 + 26 * f.alt, f.y + 10 + 40 * f.alt); ctx.rotate(f.heading);
+    const sh = ctx.createRadialGradient(0, 0, 2, 0, 0, 17 * s);
+    sh.addColorStop(0, `rgba(0,0,0,${0.38 - 0.25 * f.alt})`); sh.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = sh; ctx.scale(1.7, 0.8); ctx.beginPath(); ctx.arc(0, 0, 17 * s, 0, TAU); ctx.fill(); ctx.restore();
+  }
   function event(text, detail) { app.events.unshift({ text, detail, t: performance.now() }); app.events.length = Math.min(app.events.length, 3); }
 
   // ------------------------------------------------------------------ drawing
@@ -290,7 +297,7 @@
     body(dt, cube);
     drawLight(t);
     for (const c of sugar.cubes) drawSugar(ctx, c.x, c.y, c.amount, t, 24);
-    drawFly(ctx, fly, t);
+    if (window.FLY3D) { drawFlyShadow(ctx, fly); window.FLY3D.render(fly); } else drawFly(ctx, fly, t);
     drawHUD();
     requestAnimationFrame(frame);
   }
