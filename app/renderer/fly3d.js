@@ -39,15 +39,15 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
   scene.add(root);
 
   const mats = {
-    eye: new THREE.MeshStandardMaterial({ color: 0xd42a1e, emissive: 0x9a1c12, emissiveIntensity: 0.9, roughness: 0.35, side: THREE.DoubleSide, depthTest: false }),  // eye normals face inward; emissive keeps them red
+    eye: new THREE.MeshStandardMaterial({ color: 0xff2e1c, emissive: 0xb01e10, emissiveIntensity: 0.9, roughness: 0.35, side: THREE.DoubleSide, depthTest: false }),  // eye normals face inward; emissive keeps them red
     wing: new THREE.MeshPhysicalMaterial({ color: 0xf2f6ff, roughness: 0.1, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false }),
-    body: new THREE.MeshPhysicalMaterial({ color: 0xb08f5e, roughness: 0.42, metalness: 0.05, clearcoat: 0.35, clearcoatRoughness: 0.5, side: THREE.DoubleSide }),
-    thorax: new THREE.MeshPhysicalMaterial({ color: 0x9c8058, roughness: 0.45, clearcoat: 0.4, clearcoatRoughness: 0.4, side: THREE.DoubleSide }),
-    abdBand: new THREE.MeshPhysicalMaterial({ color: 0x2a1c10, roughness: 0.45, clearcoat: 0.5, clearcoatRoughness: 0.3, side: THREE.DoubleSide }),
+    body: new THREE.MeshPhysicalMaterial({ color: 0xe0a15c, roughness: 0.38, metalness: 0.0, clearcoat: 0.6, clearcoatRoughness: 0.35, side: THREE.DoubleSide }),
+    thorax: new THREE.MeshPhysicalMaterial({ color: 0xd9985a, roughness: 0.4, clearcoat: 0.6, clearcoatRoughness: 0.35, side: THREE.DoubleSide }),
+    abdBand: new THREE.MeshPhysicalMaterial({ color: 0x3a2412, roughness: 0.4, clearcoat: 0.6, clearcoatRoughness: 0.3, side: THREE.DoubleSide }),
     black: new THREE.MeshStandardMaterial({ color: 0x1c140c, roughness: 0.6, side: THREE.DoubleSide }),
     brown: new THREE.MeshStandardMaterial({ color: 0x4a3620, roughness: 0.7, side: THREE.DoubleSide }),
-    lower: new THREE.MeshStandardMaterial({ color: 0xcdb58a, roughness: 0.55, side: THREE.DoubleSide }),
-    leg: new THREE.MeshStandardMaterial({ color: 0x8a6d45, roughness: 0.6, side: THREE.DoubleSide }),
+    lower: new THREE.MeshStandardMaterial({ color: 0xf1dcb6, roughness: 0.5, side: THREE.DoubleSide }),
+    leg: new THREE.MeshStandardMaterial({ color: 0xcf9a5e, roughness: 0.55, side: THREE.DoubleSide }),
     ocelli: new THREE.MeshPhysicalMaterial({ color: 0x8a2a1a, roughness: 0.2, clearcoat: 1, side: THREE.DoubleSide }),
   };
   const matFor = (g) => {
@@ -56,7 +56,8 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
     if (n.includes('ocelli')) return mats.ocelli;
     if (n.includes('wing')) return mats.wing;
     if (n.includes('black')) return mats.black;
-    if (n.includes('brown') || n.includes('bristle')) return mats.brown;
+    if (n.includes('bristle')) return mats.brown;
+    if (n.includes('brown')) return mats.leg;
     // abdomen: tan tergites with the posterior segments black (male Drosophila), pale ventral sternites
     const ab = n.match(/^abdomen_(\d)/);
     if (ab) { const i = +ab[1]; if (n.includes('lower')) return mats.lower; return (i >= 5 || i === 2) ? mats.abdBand : mats.body; }
@@ -127,12 +128,38 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
   model.position.set(-c.x * u, c.y * u, -c.z * u);
   console.log('fly3d body size (model units)', size.toArray().map(v => +v.toFixed(3)), 'centre', c.toArray().map(v => +v.toFixed(3)));
   const restQuat = { wingL: parts.wingL.quaternion.clone(), wingR: parts.wingR.quaternion.clone() };
+  // rest pose: each wing lies flat along the back. Find the wing tip (farthest point from the hinge, in
+  // hinge-local coordinates) and rotate that direction onto "backward, slightly inward, slightly down".
+  const foldQuat = {};
+  for (const key of ['wingL', 'wingR']) {
+    const g = parts[key]; const side = key === 'wingL' ? 1 : -1;
+    let tip = new THREE.Vector3(), best = 0;
+    g.updateMatrixWorld(true);
+    g.traverse(o => { if (!o.isMesh) return; const pos = o.geometry.attributes.position; const v = new THREE.Vector3();
+      for (let i = 0; i < pos.count; i += 7) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); g.worldToLocal(v); const d = v.lengthSq(); if (d > best) { best = d; tip.copy(v); } } });
+    const target = new THREE.Vector3(-1, side * 0.035, side > 0 ? -0.10 : -0.15).normalize();   // both lie along the back, one stacked on the other
+    foldQuat[key] = new THREE.Quaternion().setFromUnitVectors(tip.clone().normalize(), target);
+  }
 
+  // verify each fold by measuring where the wing tip ends up in the fly's frame; a bad one gets the
+  // other wing's fold mirrored across the body plane (y -> -y: quaternion (x,y,z,w) -> (-x,y,-z,w))
+  const foldDir = (key) => {
+    const g = parts[key]; g.quaternion.copy(foldQuat[key]); model.updateMatrixWorld(true);
+    let best = 0; const tip = new THREE.Vector3(), v = new THREE.Vector3(), hinge = g.getWorldPosition(new THREE.Vector3());
+    g.traverse(o => { if (!o.isMesh) return; const pos = o.geometry.attributes.position;
+      for (let i = 0; i < pos.count; i += 5) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); const d = v.distanceToSquared(hinge); if (d > best) { best = d; tip.copy(v); } } });
+    model.worldToLocal(tip); model.worldToLocal(hinge); return tip.sub(hinge).normalize();
+  };
+  const ok = { wingL: foldDir('wingL').x < -0.85, wingR: foldDir('wingR').x < -0.85 };
+  for (const [bad, good] of [['wingL', 'wingR'], ['wingR', 'wingL']]) {
+    if (!ok[bad] && ok[good]) { const q = foldQuat[good]; foldQuat[bad] = new THREE.Quaternion(-q.x, q.y, -q.z, q.w); }
+  }
+  console.log('wing folds ok', ok);
   const REST_FOLD = +(new URLSearchParams(location.search).get('fold') || -1.25);
   // state: {x, y, heading, roll, alt, flying, wingPhase, proboscis, scale}
   function render(f) {
     const sc = (f.scale || 1) / 2.6;
-    root.position.set(f.x, f.y, 0);
+    root.position.set(f.x, f.y, f.z || 0);
     root.rotation.set(0, 0, f.heading);
     root.scale.setScalar(sc * (1 + 0.22 * (f.alt || 0)));
     tilt.rotation.y = 0.35 * (f.roll || 0);
@@ -140,11 +167,40 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
       const w = parts[key], ax = w.userData.axis; if (!ax) continue;
       const side = key === 'wingL' ? 1 : -1;
       // rest: folded back over the abdomen; flight: stroke of ~140 degrees about the hinge
-      const angle = f.flying ? (-0.9 + 1.1 * (0.5 + 0.5 * Math.sin(f.wingPhase + (side > 0 ? 0 : 0.4)))) : REST_FOLD;   // axes are already mirrored per side
-      w.quaternion.copy(restQuat[key]).multiply(new THREE.Quaternion().setFromAxisAngle(ax, angle));
+      if (f.flying) {
+        const angle = -0.9 + 1.1 * (0.5 + 0.5 * Math.sin(f.wingPhase + (side > 0 ? 0 : 0.4)));   // stroke about the real yaw hinge
+        w.quaternion.copy(restQuat[key]).multiply(new THREE.Quaternion().setFromAxisAngle(ax, angle));
+      } else {
+        w.quaternion.copy(foldQuat[key]);
+      }
     }
     parts.proboscis.position.set(0, 0, -0.35 * (f.proboscis || 0) * len * 0.12);
     renderer.render(scene, camera);
   }
-  return { render, parts, scene, renderer };
+  // ---- sugar cubes: grainy white boxes standing on the screen, same slight tilt as the fly
+  const grain = document.createElement('canvas'); grain.width = grain.height = 128;
+  { const g = grain.getContext('2d'); g.fillStyle = '#f7f2e8'; g.fillRect(0, 0, 128, 128);
+    for (let i = 0; i < 2600; i++) { const v = 228 + Math.random() * 27; g.fillStyle = `rgb(${v},${v - 4},${v - 12})`; g.fillRect(Math.random() * 128, Math.random() * 128, 1 + Math.random() * 2, 1 + Math.random() * 2); }
+    for (let i = 0; i < 160; i++) { g.fillStyle = 'rgba(255,255,255,0.95)'; g.fillRect(Math.random() * 128, Math.random() * 128, 1, 1); } }
+  const grainTex = new THREE.CanvasTexture(grain); grainTex.wrapS = grainTex.wrapT = THREE.RepeatWrapping;
+  const sugarMat = new THREE.MeshPhysicalMaterial({ map: grainTex, color: 0xffffff, emissive: 0x2a2622, roughness: 0.5, clearcoat: 0.4, clearcoatRoughness: 0.5, sheen: 0.8, sheenColor: 0xfff4e0 });
+  const cubeMeshes = new Map();
+  function setCubes(list, size = 24) {
+    const seen = new Set();
+    for (const c of list) {
+      seen.add(c);
+      let m = cubeMeshes.get(c);
+      if (!m) {
+        m = new THREE.Group(); const t = new THREE.Group(); t.rotation.x = -0.22; m.add(t);
+        const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), sugarMat); box.position.z = 0.5; t.add(box); m.userData.box = box;
+        scene.add(m); cubeMeshes.set(c, m);
+      }
+      const side = size * (0.5 + 0.5 * Math.max(0, c.amount));
+      m.position.set(c.x, c.y + size / 2, 0);
+      m.userData.box.scale.set(side, side, side * 0.95); m.userData.box.position.z = side * 0.475;
+      m.visible = c.amount > 0.01;
+    }
+    for (const [c, m] of cubeMeshes) if (!seen.has(c)) { scene.remove(m); cubeMeshes.delete(c); }
+  }
+  return { render, setCubes, parts, scene, renderer };
 }
