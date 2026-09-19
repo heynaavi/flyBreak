@@ -26,7 +26,7 @@
   };
   const hz = { escape: 0, feed: 0, backward: 0, groom: 0, forward: 0, turnL: 0, turnR: 0 };
   const brain = { online: false, speed: 0, active: 0, simMs: 0, ws: null, lastMsg: 0 };
-  const app = { phase: 'rest', timer: 0, fed: 0, msg: '', msgAlpha: 0, flash: 0, events: [], dim: 0, pulse: 0 };
+  const app = { phase: 'rest', timer: 0, fed: 0, msg: '', msgAlpha: 0, flash: 0, events: [], dim: 0, pulse: 0, menuLift: 0 };
   const senses = { sugar: 0, looming: 0 };
   const dust = Array.from({ length: 70 }, () => ({ x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - 0.5) * 0.25, vy: -0.05 - Math.random() * 0.12, r: 0.6 + Math.random() * 1.4, s: 0.3 + Math.random() * 0.7, o: Math.random() * TAU }));
   const particles = Array.from({ length: 60 }, (_, i) => ({
@@ -37,6 +37,7 @@
   if (inElectron) {
     window.notch.onCursor(p => setCursor(p.x, p.y));
     window.notch.onCommand(cmd => command(cmd));
+    window.notch.onMenu(open => gsap.to(app, { menuLift: open ? 0.75 : 0, duration: open ? 0.15 : 0.5 }));
   } else {
     addEventListener('mousemove', e => setCursor(e.clientX, e.clientY));
     const keys = { f: 'focus', b: 'break', r: 'rest', d: 'free' };
@@ -275,16 +276,17 @@
   }
   function drawLight(t) {
     // the break dims the desktop so the fly and the sugar carry the light
-    if (app.dim > 0.005) {
-      ctx.fillStyle = `rgba(4,6,12,${app.dim})`; ctx.fillRect(0, 0, W, H);
+    const dim = app.dim * (1 - app.menuLift);
+    if (dim > 0.005) {
+      ctx.fillStyle = `rgba(4,6,12,${dim})`; ctx.fillRect(0, 0, W, H);
       // vignette: the edges fall off a little further, the middle stays a stage
       const v = ctx.createRadialGradient(W / 2, H * 0.35, H * 0.25, W / 2, H * 0.45, H * 0.95);
-      v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, `rgba(0,0,0,${0.55 * app.dim})`);
+      v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, `rgba(0,0,0,${0.55 * dim})`);
       ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
       // dust: slow motes drifting across the dark, a few catching the light
       for (const d of dust) {
         d.x += d.vx * (1 + 0.2 * Math.sin(t * d.s)); d.y += d.vy; if (d.x < -10) d.x = W + 10; if (d.x > W + 10) d.x = -10; if (d.y < -10) d.y = H + 10; if (d.y > H + 10) d.y = -10;
-        const al = (0.10 + 0.14 * (0.5 + 0.5 * Math.sin(t * d.s * 2 + d.o))) * app.dim;
+        const al = (0.10 + 0.14 * (0.5 + 0.5 * Math.sin(t * d.s * 2 + d.o))) * dim;
         ctx.fillStyle = `rgba(200,220,255,${al})`; ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, TAU); ctx.fill();
       }
     }
@@ -308,6 +310,22 @@
     }
     ctx.restore();
     app.flash *= 0.9;
+  }
+  function drawAura() {
+    if (fly.hiding) return;
+    const s = fly.scale * (1 + 0.22 * fly.alt), k = 0.35 + 0.65 * app.dim;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    // floor pool (the neon fly lights the glass under it); the shadow falls inside it
+    const px = fly.x + 16 + 40 * fly.alt, py = fly.y + 26 + 60 * fly.alt, pr = 62 * s;
+    const pool = ctx.createRadialGradient(px, py, 4, px, py, pr);
+    pool.addColorStop(0, `rgba(40,120,255,${0.30 * k})`); pool.addColorStop(0.5, `rgba(60,90,255,${0.10 * k})`); pool.addColorStop(1, 'rgba(60,90,255,0)');
+    ctx.fillStyle = pool; ctx.beginPath(); ctx.arc(px, py, pr, 0, TAU); ctx.fill();
+    // body halo: cyan core with a magenta fringe
+    const hr = 26 * s;
+    const halo = ctx.createRadialGradient(fly.x, fly.y, 2, fly.x, fly.y, hr);
+    halo.addColorStop(0, `rgba(120,240,255,${0.55 * k})`); halo.addColorStop(0.45, `rgba(60,140,255,${0.28 * k})`); halo.addColorStop(0.8, `rgba(200,80,255,${0.10 * k})`); halo.addColorStop(1, 'rgba(200,80,255,0)');
+    ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(fly.x, fly.y, hr, 0, TAU); ctx.fill();
+    ctx.restore();
   }
   function drawHUD() {
     ctx.font = '500 11px ui-monospace, Menlo, monospace'; ctx.textBaseline = 'top';
@@ -343,7 +361,7 @@
     body(dt, cube);
     drawLight(t);
     if (window.FLY3D) window.FLY3D.setCubes(sugar.cubes, 64); else for (const c of sugar.cubes) drawSugar(ctx, c.x, c.y, c.amount, t, 24);
-    if (window.FLY3D) window.FLY3D.render(fly, dt); else drawFly(ctx, fly, t);
+    if (window.FLY3D) { drawAura(); window.FLY3D.render(fly, dt); } else drawFly(ctx, fly, t);
     drawHUD();
     requestAnimationFrame(frame);
   }

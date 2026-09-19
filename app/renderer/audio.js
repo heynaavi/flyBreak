@@ -67,7 +67,7 @@
     if (!ensure()) return;
     if (ctx.state === 'suspended') ctx.resume();
     const t = ctx.currentTime;
-    const flying = fly.flying || fly.mode === 'landing';
+    const flying = (fly.flying || fly.mode === 'landing') && !fly.hiding && fly.mode !== 'feed' && fly.mode !== 'rest';
     const speed = fly.speed || 0;
     purr.g.gain.setTargetAtTime(flying ? Math.min(0.035, 0.018 + speed / 12000) : 0, t, flying ? 0.15 : 0.35);
     purr.o1.frequency.setTargetAtTime(92 + speed * 0.03, t, 0.2);
@@ -90,10 +90,7 @@
     bell(PENTA[2 + i * 2], 0.07, 0, 2.2); bell(PENTA[2 + i * 2] * 2, 0.02, 0.02, 1.2);
   };
   // feeding: a tiny soft tick, well under the pad
-  A.sip = function () {
-    if (!ensure()) return;
-    bell(PENTA[Math.floor(Math.random() * 3)] * 2, 0.012, 0, 0.35);
-  };
+  A.sip = function () {};   // perched = silent
   // emerging from / returning into the notch: an airy swoosh with a little scale run
   A.whoosh = function (up = true) {
     if (!ensure()) return;

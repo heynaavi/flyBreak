@@ -47,10 +47,10 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
 
   // blue bottle fly: metallic cobalt/teal cuticle, joints a shade darker, no black stripes
   const cuticle = (color, extra = {}) => new THREE.MeshPhysicalMaterial({ color, metalness: 0.55, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.18,
-    sheen: 0.8, sheenColor: 0x7fd3ff, sheenRoughness: 0.4, emissive: 0x03122e, emissiveIntensity: 0.35, side: THREE.FrontSide, ...extra });
+    sheen: 1, sheenColor: 0x8fe8ff, sheenRoughness: 0.35, emissive: 0x0a3cff, emissiveIntensity: 0.55, side: THREE.FrontSide, ...extra });
   const mats = {
     eye: new THREE.MeshStandardMaterial({ color: 0xff2e1c, emissive: 0xb01e10, emissiveIntensity: 0.9, roughness: 0.35, side: THREE.DoubleSide, depthTest: false }),
-    wing: new THREE.MeshPhysicalMaterial({ color: 0xdfeeff, roughness: 0.08, transparent: true, opacity: 0.24, side: THREE.DoubleSide, depthWrite: false, clearcoat: 0.8 }),
+    wing: new THREE.MeshPhysicalMaterial({ color: 0xdfeeff, emissive: 0x2a6cff, emissiveIntensity: 0.25, roughness: 0.08, transparent: true, opacity: 0.26, side: THREE.DoubleSide, depthWrite: false, clearcoat: 0.8 }),
     body: cuticle(0x1f62c8),
     thorax: cuticle(0x1a55b8),
     head: cuticle(0x1c4fa8),

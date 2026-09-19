@@ -61,7 +61,7 @@ app.whenReady().then(() => {
   tray = new Tray(nativeImage.createEmpty());
   tray.setTitle('🪰');
   tray.setToolTip('FlyBreak');
-  tray.setContextMenu(Menu.buildFromTemplate([
+  const menu = Menu.buildFromTemplate([
     { label: 'Start focus (25 min)', click: () => send('cmd', 'focus') },
     { label: 'FlyBreak now (60 s)', click: () => send('cmd', 'break') },
     { label: 'Fly, free (demo)', click: () => send('cmd', 'free') },
@@ -69,7 +69,10 @@ app.whenReady().then(() => {
     { type: 'separator' },
     { label: 'Reset brain', click: () => send('cmd', 'resetBrain') },
     { label: 'Quit', click: () => app.quit() },
-  ]));
+  ]);
+  // no setContextMenu: pop it ourselves so the renderer can lift the stage darkness while it is open
+  tray.on('click', () => { send('menu', true); tray.popUpContextMenu(menu); send('menu', false); });
+  tray.on('right-click', () => { send('menu', true); tray.popUpContextMenu(menu); send('menu', false); });
   startBrain();
 });
 
