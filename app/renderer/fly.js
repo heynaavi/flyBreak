@@ -91,16 +91,27 @@
     for (const side of [-1, 1]) { ctx.beginPath(); ctx.arc(-4, side * 5.5, 0.9, 0, TAU); ctx.fill(); }
 
     // head + compound eyes
-    ctx.save(); ctx.translate(8, 0);
-    g = ctx.createRadialGradient(0.5, -1.5, 0.5, 0, 0, 4.5);
-    g.addColorStop(0, '#9c7a52'); g.addColorStop(1, '#3a2312');
-    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, 0, 3.8, 4.2, 0, 0, TAU); ctx.fill();
+    ctx.save(); ctx.translate(8.2, 0);
+    g = ctx.createRadialGradient(0.5, -1.5, 0.5, 0, 0, 5);
+    g.addColorStop(0, '#a8875c'); g.addColorStop(1, '#3a2312');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, 0, 4.2, 4.6, 0, 0, TAU); ctx.fill();
     for (const side of [-1, 1]) {
-      const e = ctx.createRadialGradient(1.2, side * 2.4 - 0.6, 0.3, 0.8, side * 2.6, 2.6);
-      e.addColorStop(0, '#ff7a63'); e.addColorStop(0.35, '#c8322a'); e.addColorStop(1, '#4a0a08');
-      ctx.fillStyle = e; ctx.beginPath(); ctx.ellipse(0.8, side * 2.6, 2.4, 2.1, 0, 0, TAU); ctx.fill();
-      ctx.fillStyle = 'rgba(255,255,255,0.85)'; ctx.beginPath(); ctx.arc(1.6, side * 2.0, 0.55, 0, TAU); ctx.fill();
+      ctx.save();
+      ctx.beginPath(); ctx.ellipse(0.6, side * 2.7, 2.6, 2.0, side * 0.35, 0, TAU); ctx.clip();
+      const e = ctx.createRadialGradient(1.3, side * 2.2, 0.3, 0.6, side * 2.7, 3.0);
+      e.addColorStop(0, '#ff8a6a'); e.addColorStop(0.4, '#c8322a'); e.addColorStop(1, '#3d0806');
+      ctx.fillStyle = e; ctx.fillRect(-3, side * 2.7 - 3, 7, 6);
+      // ommatidia: a faint facet lattice
+      ctx.fillStyle = 'rgba(40,0,0,0.35)';
+      for (let i = -3; i <= 3; i++) for (let j = -2; j <= 2; j++) {
+        ctx.beginPath(); ctx.arc(0.6 + i * 0.75 + (j % 2) * 0.37, side * 2.7 + j * 0.65, 0.22, 0, TAU); ctx.fill();
+      }
+      ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.beginPath(); ctx.ellipse(1.7, side * 2.0, 0.7, 0.45, side * 0.6, 0, TAU); ctx.fill();
+      ctx.restore();
     }
+    // ocelli: three tiny simple eyes on the crown
+    ctx.fillStyle = '#5a1a12';
+    for (const [ox, oy] of [[-1.6, 0], [-0.9, -0.8], [-0.9, 0.8]]) { ctx.beginPath(); ctx.arc(ox, oy, 0.3, 0, TAU); ctx.fill(); }
     // antennae
     ctx.strokeStyle = '#3a2312'; ctx.lineWidth = 0.7;
     ctx.beginPath(); ctx.moveTo(3.2, -1); ctx.lineTo(5.2, -2.2); ctx.moveTo(3.2, 1); ctx.lineTo(5.2, 2.2); ctx.stroke();
@@ -120,14 +131,23 @@
         const ph = f.wingPhase + (side > 0 ? 0 : 0.3);
         for (let k = 0; k < 3; k++) {
           const a = 0.55 + 0.75 * (0.5 + 0.5 * Math.sin(ph + k * 2.1));
-          wing(ctx, side, a, 0.22, 15, false);
+          wing(ctx, side, a, 0.22, 17, false);
         }
       }
     } else {
-      wing(ctx, -1, 0.18, 0.7, 14, true);
-      wing(ctx, 1, 0.18, 0.7, 14, true);
+      // folded flat over the back, tips past the abdomen, one wing over the other
+      wing(ctx, -1, 0.10, 0.62, 22, true);
+      wing(ctx, 1, 0.10, 0.62, 22, true);
     }
     ctx.restore();
+
+    // bristles: thorax crown and abdomen tip
+    ctx.strokeStyle = 'rgba(30,18,8,0.8)'; ctx.lineWidth = 0.45;
+    ctx.beginPath();
+    for (const [bx, by, dx, dy] of [[-2, -4.4, -1.5, -1.6], [1, -4.6, -1.2, -1.8], [-2, 4.4, -1.5, 1.6], [1, 4.6, -1.2, 1.8], [-18, -1.2, -1.8, -0.8], [-18, 1.2, -1.8, 0.8]]) {
+      ctx.moveTo(bx, by); ctx.lineTo(bx + dx, by + dy);
+    }
+    ctx.stroke();
 
     // rim light from the display
     ctx.strokeStyle = 'rgba(255,255,255,0.28)'; ctx.lineWidth = 0.6;

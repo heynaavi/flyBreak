@@ -61,7 +61,7 @@
   }
 
   function startBreak(secs) {
-    app.phase = 'break'; app.timer = secs; app.fed = 0;
+    app.phase = secs > 1e8 ? 'free' : 'break'; app.timer = secs; app.fed = 0;
     showSugar();
     setTimeout(takeOff, 700);
     say(secs > 1e8 ? 'Free flight. Your cursor is the predator.' : 'FlyBreak: feed the fly. Your cursor is the predator.');
@@ -103,26 +103,28 @@
   setInterval(sendSenses, 33);
 
   // ------------------------------------------------------------------ senses (world -> spike rates)
-  let prevTheta = 0;
+
   function encodeSenses(dt) {
     // Looming: the cursor is a dark disc; its angular size on the fly's eye grows as it approaches.
     // LPLC2/LC4 respond to expansion, so the rate follows d(theta)/dt, plus a floor when it is on top of us.
+    // Only the cursor's own motion counts (flies suppress looming from self-motion): the rate follows
+    // approach speed / distance (1/tau), with a floor when the cursor is right on top of the fly.
     const dx = cursor.x - fly.x, dy = cursor.y - fly.y, d = Math.max(6, Math.hypot(dx, dy));
-    const theta = 2 * Math.atan(16 / d);
-    const dtheta = (theta - prevTheta) / dt; prevTheta = theta;
+    if (performance.now() / 1000 - cursor.t > 0.08) { cursor.vx *= 0.5; cursor.vy *= 0.5; }
+    const approach = -(dx * cursor.vx + dy * cursor.vy) / d;       // px/s toward the fly
     let loom = 0;
-    if (d < 320) loom = clamp(dtheta * 900, 0, 150) + (d < 45 ? 150 : d < 90 ? 60 : 0);
+    if (d < 360) loom = clamp((approach / d) * 30, 0, 150) + (d < 36 ? 150 : 0);
     senses.looming += (clamp(loom, 0, 150) - senses.looming) * Math.min(1, dt * 18);
     // Sugar: labellar taste neurons fire on contact.
     const hx = fly.x + Math.cos(fly.heading) * 10 * fly.scale, hy = fly.y + Math.sin(fly.heading) * 10 * fly.scale;
-    const onSugar = sugar.shown && sugar.amount > 0.05 && Math.hypot(hx - sugar.x, hy - (sugar.y + 5)) < 13;
+    const onSugar = sugar.shown && sugar.amount > 0.05 && !(fly.satiated > 0) && Math.hypot(hx - sugar.x, hy - (sugar.y + 5)) < 13;
     senses.sugar = onSugar ? 150 : 0;
     return onSugar;
   }
 
   // ------------------------------------------------------------------ body (brain -> motion)
   function body(dt, onSugar) {
-    fly.cooldown -= dt;
+    fly.cooldown -= dt; fly.satiated = (fly.satiated || 0) - dt;
     const offline = !brain.online || performance.now() - brain.lastMsg > 1500;
     // with no brain server we fake the giant fiber from the looming rate so the demo still moves
     const escapeHz = offline ? (senses.looming > 120 ? 200 : 0) : hz.escape;
@@ -147,7 +149,12 @@
       if (fly.mode !== 'feed') { fly.mode = 'feed'; fly.flying = false; fly.speed = 0; event('LB3 → MN9: proboscis extension, feeding', `${feedHz.toFixed(0)} Hz`); gsap.to(fly, { alt: 0, duration: 0.3 }); }
       fly.proboscis += (1 - fly.proboscis) * Math.min(1, dt * 6);
       sugar.amount -= dt * 0.08;
-      if (sugar.amount <= 0.05) { app.fed++; sugar.amount = 0; say('Fed! The sugar is gone.'); setTimeout(() => { if (app.phase === 'break' || app.phase === 'free') showSugar(); fly.mode = 'fly'; fly.flying = true; }, 1500); }
+      if (sugar.amount <= 0.05) {
+        app.fed++; sugar.amount = 0; fly.satiated = 9; say(`Fed ${app.fed}×. Full for a moment.`);
+        fly.mode = 'fly'; fly.flying = true; fly.proboscis = 0; fly.targetHeading = -Math.PI / 2 + (Math.random() - 0.5); fly.speed = 160;
+        gsap.to(fly, { alt: 0.7, duration: 0.4 });
+        setTimeout(() => { if (app.phase === 'break' || app.phase === 'free') showSugar(); }, 2500);
+      }
     } else if (fly.mode === 'feed') {
       fly.mode = 'fly'; fly.flying = true; fly.proboscis = 0;
     }
@@ -169,7 +176,7 @@
       fly.saccadeIn = 0.12 + Math.random() * 0.3;
       const toSugar = Math.atan2(sugar.y + 6 - fly.y, sugar.x - fly.x);
       const dSugar = Math.hypot(sugar.x - fly.x, sugar.y - fly.y);
-      const wantSugar = sugar.shown && sugar.amount > 0.05 && Math.random() < (dSugar > 120 ? 0.55 : 0.8);
+      const wantSugar = sugar.shown && sugar.amount > 0.05 && !(fly.satiated > 0) && Math.random() < (dSugar > 120 ? 0.55 : 0.8);
       const sacc = (Math.random() < 0.5 ? 1 : -1) * (0.6 + Math.random() * 1.0);
       let h = wantSugar ? toSugar + (Math.random() - 0.5) * 0.7 : fly.heading + sacc;
       // steering DNs bias the turn
@@ -193,7 +200,7 @@
     fly.x = clamp(fly.x, 4, W - 4); fly.y = clamp(fly.y, 2, H - 4);
     // approach to sugar: slow down and descend
     const dS = Math.hypot(sugar.x - fly.x, sugar.y - fly.y);
-    if (sugar.shown && dS < 40) { fly.speed *= 0.93; fly.alt += (0.15 - fly.alt) * dt * 6; } else fly.alt += (0.6 + Math.sin(performance.now() / 700) * 0.15 - fly.alt) * dt * 2;
+    if (sugar.shown && dS < 40 && !(fly.satiated > 0)) { fly.speed *= 0.93; fly.alt += (0.15 - fly.alt) * dt * 6; } else fly.alt += (0.6 + Math.sin(performance.now() / 700) * 0.15 - fly.alt) * dt * 2;
   }
 
   function event(text, detail) { app.events.unshift({ text, detail, t: performance.now() }); app.events.length = Math.min(app.events.length, 3); }

@@ -1,0 +1,17 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>fly lab</title><style>body{margin:0;background:#1b1b1f}canvas{display:block}</style></head><body>
+<canvas id="c" width="2000" height="800" style="width:1000px;height:400px"></canvas>
+<script src="renderer/fly.js"></script>
+<script>
+  const ctx = document.getElementById('c').getContext('2d'); ctx.scale(2, 2);
+  const flying = { x: 250, y: 200, heading: -0.4, alt: 0.6, flying: true, wingPhase: 0, legPhase: 0, proboscis: 0, scale: 9 };
+  const resting = { x: 700, y: 220, heading: 0.2, alt: 0, flying: false, wingPhase: 0, legPhase: 0, proboscis: 0.9, scale: 9 };
+  function frame(t) {
+    ctx.clearRect(0, 0, 1000, 400);
+    flying.wingPhase = t / 40; resting.legPhase = t / 300;
+    drawFly(ctx, flying, t / 1000); drawFly(ctx, resting, t / 1000);
+    drawSugar(ctx, 820, 150, 1, t / 1000);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+</script></body></html>
