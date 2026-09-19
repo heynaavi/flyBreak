@@ -77,7 +77,7 @@
   }
   function dropCube(i) {
     // cubes settle in the notch's mouth: their top faces overlap the cutout and get clipped by it
-    const c = { x: NOTCH.cx + (i - 1) * 26, y: NOTCH.h - 30, amount: 0, land: NOTCH.h + 8 };
+    const c = { x: NOTCH.cx + (i - 1) * 38, y: NOTCH.h - 30, amount: 0, land: NOTCH.h + 8 };
     sugar.cubes.push(c);
     gsap.to(c, { amount: 1, duration: 0.35 });
     gsap.to(c, { y: c.land, duration: 0.7, ease: 'bounce.out' });
@@ -139,7 +139,7 @@
     // Sugar: the labellar taste neurons fire on contact.
     const c = nearestCube();
     const hx = fly.x + Math.cos(fly.heading) * 10 * fly.scale, hy = fly.y + Math.sin(fly.heading) * 10 * fly.scale;
-    const onSugar = !!c && fly.satiated <= 0 && (fly.mode === 'feed' || Math.hypot(hx - c.x, hy - (c.y + 8)) < 8 * fly.scale);
+    const onSugar = !!c && fly.satiated <= 0 && (fly.mode === 'feed' || Math.hypot(hx - c.x, hy - (c.y + 12)) < 9 * fly.scale);
     senses.sugar = onSugar ? 150 : 0;
     return onSugar ? c : null;
   }
@@ -172,7 +172,7 @@
         // settle on top of the cube, head down into it, legs gripping
         fly.mode = 'feed'; fly.flying = false; fly.speed = 0; fly.roll = 0; fly.feeding = true;
         event('LB3 → MN9: proboscis extension, feeding', `${feedHz.toFixed(0)} Hz`);
-        gsap.to(fly, { alt: 0, x: cube.x + 2, y: cube.y + 14 + 9 * fly.scale, heading: -Math.PI / 2, duration: 0.35, ease: 'power2.out' });
+        gsap.to(fly, { alt: 0, x: cube.x + 3, y: cube.y + 22 + 9 * fly.scale, heading: -Math.PI / 2, duration: 0.35, ease: 'power2.out' });
       }
       fly.proboscis += (1 - fly.proboscis) * Math.min(1, dt * 6);
       cube.amount -= dt * 0.09;
@@ -289,7 +289,7 @@
     const cube = encodeSenses(dt);
     body(dt, cube);
     drawLight(t);
-    for (const c of sugar.cubes) drawSugar(ctx, c.x, c.y, c.amount, t, 15);
+    for (const c of sugar.cubes) drawSugar(ctx, c.x, c.y, c.amount, t, 24);
     drawFly(ctx, fly, t);
     drawHUD();
     requestAnimationFrame(frame);

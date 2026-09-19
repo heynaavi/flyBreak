@@ -74,10 +74,10 @@
     const tw = f.flying || f.feeding ? 0 : Math.sin(f.legPhase) * 0.12;
     for (const side of [-1, 1]) {
       if (f.feeding) {
-        // gripping the cube: legs splayed wide and still, tarsi planted
-        leg(ctx, 3, side * 3, side, 0.55, 1.35, 7, 7);
-        leg(ctx, -1, side * 3.5, side, 1.35, 1.75, 7, 7);
-        leg(ctx, -4, side * 3.5, side, 2.1, 2.5, 7, 8);
+        // gripping the cube: legs tucked close, knees up, tarsi planted forward
+        leg(ctx, 3, side * 3, side, 0.75, 0.2, 5, 5);
+        leg(ctx, -1, side * 3.5, side, 1.35, 0.6, 5, 5);
+        leg(ctx, -4, side * 3.5, side, 2.0, 1.3, 5, 6);
       } else if (f.flying) {
         leg(ctx, 2, side * 3, side, 2.3, 2.9, 5, 6);
         leg(ctx, -1, side * 3.5, side, 2.6, 3.0, 5, 6);

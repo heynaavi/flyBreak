@@ -16,3 +16,4 @@
   turnL        2 neurons
   turnR        2 neurons
 [brain] brain live on ws://127.0.0.1:8765
+sandbox_extension_issue_file failed for /Users/navi/Dev/2026/ClaudeCommunityHackathon/app/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Resources: 1 (Operation not permitted)
