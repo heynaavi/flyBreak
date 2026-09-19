@@ -15,6 +15,6 @@
   const q = new URLSearchParams(location.search);
   const W = +(q.get('w') || innerWidth), H = +(q.get('h') || innerHeight);
   const gl = document.getElementById('gl'); gl.style.width = W + 'px'; gl.style.height = H + 'px';
-  createFly3D({ canvas: gl, W, H, bodyLength: 82 }).then(f => { window.FLY3D = f; }).catch(e => console.warn('fly3d unavailable', e));
+  createFly3D({ canvas: gl, W, H, bodyLength: 72 }).then(f => { window.FLY3D = f; }).catch(e => console.warn('fly3d unavailable', e));
 </script>
 </body></html>

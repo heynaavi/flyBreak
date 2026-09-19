@@ -77,7 +77,7 @@
   }
   function dropCube(i) {
     // cubes settle in the notch's mouth: their top faces overlap the cutout and get clipped by it
-    const c = { x: NOTCH.cx + (i - 1) * 72, y: NOTCH.h - 30, amount: 0, land: NOTCH.h + 8 };
+    const c = { x: NOTCH.cx + (i - 1) * 80, y: NOTCH.h - 30, amount: 0, land: NOTCH.h + 14 };
     sugar.cubes.push(c);
     gsap.to(c, { amount: 1, duration: 0.35 });
     gsap.to(c, { y: c.land, duration: 0.7, ease: 'bounce.out' });
@@ -139,7 +139,7 @@
     // Sugar: the labellar taste neurons fire on contact.
     const c = nearestCube();
     const hx = fly.x + Math.cos(fly.heading) * 10 * fly.scale, hy = fly.y + Math.sin(fly.heading) * 10 * fly.scale;
-    const onSugar = !!c && fly.satiated <= 0 && (fly.mode === 'feed' || Math.hypot(hx - c.x, hy - (c.y + 28)) < 12 * fly.scale);
+    const onSugar = !!c && fly.satiated <= 0 && (fly.mode === 'feed' || Math.hypot(hx - c.x, hy - (c.y + 32)) < 13 * fly.scale);
     senses.sugar = onSugar ? 150 : 0;
     return onSugar ? c : null;
   }
@@ -162,28 +162,43 @@
     if (escapeHz >= 60 && fly.cooldown <= 0) {
       const away = Math.atan2(fly.y - cursor.y, fly.x - cursor.x) + (Math.random() - 0.5) * 0.9;
       if (!fly.flying) takeOff();
-      fly.mode = 'jump'; fly.targetHeading = away; fly.heading = away; fly.burst = 0.22; fly.cooldown = 0.55; fly.proboscis = 0;
+      gsap.killTweensOf(fly, 'x,y,z,heading'); fly.mode = 'jump'; fly.flying = true; fly.feeding = false; fly.z = 0; fly.targetHeading = away; fly.heading = away; fly.burst = 0.22; fly.cooldown = 0.55; fly.proboscis = 0;
       app.flash = 1; event('LPLC2/LC4 → DNp01 giant fiber: ESCAPE', `${escapeHz.toFixed(0)} Hz`);
       gsap.to(fly, { alt: 0.95, duration: 0.15, yoyo: true, repeat: 1 });
     }
-    // FEED: MN9 fires while the labellum touches sugar -> land, extend proboscis
-    if (fly.mode !== 'jump' && onSugar && feedHz >= 25) {
+    // FEED: MN9 fires while the labellum touches sugar -> glide down onto the cube (wings still beating),
+    // touch down, fold, extend the proboscis. Real flies feed in bouts: hold still, then take a few steps.
+    if (fly.mode !== 'jump' && fly.mode !== 'landing' && onSugar && feedHz >= 25) {
       if (fly.mode !== 'feed') {
-        // settle on top of the cube, head down into it, legs gripping
-        fly.mode = 'feed'; fly.flying = false; fly.speed = 0; fly.roll = 0; fly.feeding = true;
+        fly.mode = 'landing'; fly.speed = 0; fly.roll = 0; fly.feedCube = cube;
         event('LB3 → MN9: proboscis extension, feeding', `${feedHz.toFixed(0)} Hz`);
-        if (window.FLY3D) gsap.to(fly, { alt: 0, x: cube.x, y: cube.y + 28, z: 56 * 0.95 * (0.5 + 0.5 * cube.amount), heading: Math.PI / 2, duration: 0.35, ease: 'power2.out' });
-        else gsap.to(fly, { alt: 0, x: cube.x + 3, y: cube.y + 22 + 9 * fly.scale, heading: -Math.PI / 2, duration: 0.35, ease: 'power2.out' });
+        const top = 64 * 0.95 * (0.5 + 0.5 * cube.amount);
+        if (window.FLY3D) gsap.to(fly, { alt: 0, x: cube.x, y: cube.y + 32, z: top, heading: Math.PI / 2 + (Math.random() - 0.5) * 0.6, duration: 0.75, ease: 'power2.inOut',
+          onComplete: () => { fly.mode = 'feed'; fly.flying = false; fly.feeding = true; fly.hold = 1.6; fly.stepping = false; } });
+        else gsap.to(fly, { alt: 0, x: cube.x + 3, y: cube.y + 22 + 9 * fly.scale, heading: -Math.PI / 2, duration: 0.5, ease: 'power2.out',
+          onComplete: () => { fly.mode = 'feed'; fly.flying = false; fly.feeding = true; fly.hold = 1.6; } });
       }
-      fly.proboscis += (1 - fly.proboscis) * Math.min(1, dt * 6);
-      cube.amount -= dt * 0.09;
-      if (cube.amount <= 0.08) {
-        cube.amount = 0; app.fed++; fly.satiated = 8; say(`Fed ${app.fed}×. Full for a moment.`);
-        fly.mode = 'fly'; fly.flying = true; fly.proboscis = 0; fly.z = 0; fly.targetHeading = Math.PI / 2 + (Math.random() - 0.5); fly.speed = 200;
+    }
+    if (fly.mode === 'feed') {
+      const c = fly.feedCube;
+      fly.hold -= dt;
+      if (!fly.stepping && fly.hold <= 0) {
+        // a few steps to a new spot on the cube top, proboscis retracted while walking
+        fly.stepping = true;
+        const top = 64 * (0.5 + 0.5 * c.amount), r = top * 0.28;
+        gsap.to(fly, { x: c.x + (Math.random() - 0.5) * r, y: c.y + 32 + (Math.random() - 0.5) * r, heading: fly.heading + (Math.random() - 0.5) * 1.2, duration: 0.55, ease: 'sine.inOut',
+          onComplete: () => { fly.stepping = false; fly.hold = 1.2 + Math.random() * 2.2; } });
+      }
+      const want = fly.stepping ? 0 : 1;
+      fly.proboscis += (want - fly.proboscis) * Math.min(1, dt * 6);
+      if (fly.proboscis > 0.5) c.amount -= dt * 0.07;
+      if (c.amount <= 0.08) {
+        c.amount = 0; app.fed++; fly.satiated = 8; say(`Fed ${app.fed}×. Full for a moment.`);
+        fly.mode = 'fly'; fly.flying = true; fly.proboscis = 0; fly.z = 0; fly.feeding = false; fly.targetHeading = Math.PI / 2 + (Math.random() - 0.5); fly.speed = 200;
         gsap.to(fly, { alt: 0.7, duration: 0.4 });
-        setTimeout(() => { sugar.cubes.splice(sugar.cubes.indexOf(cube), 1); respawnCube(); }, 3000);
+        setTimeout(() => { sugar.cubes.splice(sugar.cubes.indexOf(c), 1); respawnCube(); }, 3000);
       }
-    } else if (fly.mode === 'feed') { fly.mode = 'fly'; fly.flying = true; fly.proboscis = 0; fly.feeding = false; fly.z = 0; }
+    }
     if (fly.mode !== 'feed') fly.feeding = false;
 
     if (fly.mode === 'rest') {
@@ -196,6 +211,7 @@
       return;
     }
     if (fly.mode === 'feed') return;
+    if (fly.mode === 'landing') { fly.wingPhase += dt * 200 * TAU * 0.05; return; }
 
     // FLIGHT: straight runs and body saccades (~90° in ~70 ms), banking into the turn.
     fly.wingPhase += dt * 200 * TAU * 0.05;
@@ -297,8 +313,8 @@
     const cube = encodeSenses(dt);
     body(dt, cube);
     drawLight(t);
-    if (window.FLY3D) window.FLY3D.setCubes(sugar.cubes, 56); else for (const c of sugar.cubes) drawSugar(ctx, c.x, c.y, c.amount, t, 24);
-    if (window.FLY3D) { drawFlyShadow(ctx, fly); window.FLY3D.render(fly); } else drawFly(ctx, fly, t);
+    if (window.FLY3D) window.FLY3D.setCubes(sugar.cubes, 64); else for (const c of sugar.cubes) drawSugar(ctx, c.x, c.y, c.amount, t, 24);
+    if (window.FLY3D) window.FLY3D.render(fly, dt); else drawFly(ctx, fly, t);
     drawHUD();
     requestAnimationFrame(frame);
   }

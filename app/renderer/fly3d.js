@@ -11,16 +11,23 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
   renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.5;
+  renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
   const scene = new THREE.Scene();
-  // screen space: x right, y down, z toward the viewer
-  const camera = new THREE.OrthographicCamera(0, W, 0, H, -4000, 4000);
-  camera.position.set(0, 0, 2000); camera.lookAt(0, 0, 0);   // top=0/bottom=H makes y grow downward
+  // screen space, right-handed: x right, y down, z INTO the screen (toward the viewer is -z).
+  // The camera sits in front of the screen looking along +z with up = -y, so nothing is mirrored.
+  const camera = new THREE.OrthographicCamera(0, W, 0, -H, -4000, 4000);
+  camera.position.set(0, 0, -2000); camera.up.set(0, -1, 0); camera.lookAt(0, 0, 0);
 
-  scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x5a4530, 1.6));
-  const key = new THREE.DirectionalLight(0xfff1dc, 3.2); key.position.set(-300, -500, 900); scene.add(key);
-  const rim = new THREE.DirectionalLight(0xbfd8ff, 1.2); rim.position.set(400, 300, 600); scene.add(rim);
-  const fill = new THREE.DirectionalLight(0xffd9b0, 0.5); fill.position.set(200, 600, 300); scene.add(fill);
+  const hemi = new THREE.HemisphereLight(0xdfe8ff, 0x304a70, 1.9); hemi.position.set(0, 0, -1); scene.add(hemi);
+  const key = new THREE.DirectionalLight(0xfff1dc, 3.2); key.position.set(-300, -500, -900); scene.add(key); scene.add(key.target);
+  key.castShadow = true; key.shadow.mapSize.set(2048, 2048); key.shadow.radius = 6; key.shadow.bias = -0.0005;
+  Object.assign(key.shadow.camera, { left: -420, right: 420, top: 420, bottom: -420, near: 1, far: 4000 }); key.shadow.camera.updateProjectionMatrix();
+  // the desktop "glass": invisible except where it receives shadow
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(W * 3, H * 3), new THREE.ShadowMaterial({ opacity: 0.42, transparent: true }));
+  ground.position.set(W / 2, H / 2, 1); ground.rotation.y = Math.PI; ground.receiveShadow = true; scene.add(ground);
+  const rim = new THREE.DirectionalLight(0x5ab8ff, 3.4); rim.position.set(420, 260, -520); scene.add(rim);
+  const fill = new THREE.DirectionalLight(0x8fd0ff, 1.2); fill.position.set(-200, 500, -300); scene.add(fill);
 
   const s = await (await fetch(`${assets}/scene.json`)).json();
   const [lo, hi] = s.bbox;
@@ -30,25 +37,26 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
 
   // root (position on screen, heading, roll) -> tilt (a little perspective) -> model (MuJoCo x fwd, y left, z up)
   const root = new THREE.Group();
-  const tilt = new THREE.Group(); tilt.rotation.x = -0.22; root.add(tilt);
+  const tilt = new THREE.Group(); tilt.rotation.x = 0.22; root.add(tilt);
   const model = new THREE.Group();
-  // MuJoCo -> screen: x -> x, y(left) -> -y (screen up), z(up) -> +z (toward viewer)
-  model.scale.set(unit, -unit, unit);
-  model.position.set(-centre[0] * unit, centre[1] * unit, -centre[2] * unit);
+  // MuJoCo -> screen: x -> x, y(left) -> -y (screen up), z(up) -> -z (toward viewer): a rotation, not a mirror
+  model.scale.set(unit, -unit, -unit);
+  model.position.set(-centre[0] * unit, centre[1] * unit, centre[2] * unit);
   tilt.add(model);
   scene.add(root);
 
   const mats = {
-    eye: new THREE.MeshStandardMaterial({ color: 0xff2e1c, emissive: 0xb01e10, emissiveIntensity: 0.9, roughness: 0.35, side: THREE.DoubleSide, depthTest: false }),  // eye normals face inward; emissive keeps them red
-    wing: new THREE.MeshPhysicalMaterial({ color: 0xf2f6ff, roughness: 0.1, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false }),
-    body: new THREE.MeshPhysicalMaterial({ color: 0xe0a15c, roughness: 0.38, metalness: 0.0, clearcoat: 0.6, clearcoatRoughness: 0.35, side: THREE.DoubleSide }),
-    thorax: new THREE.MeshPhysicalMaterial({ color: 0xd9985a, roughness: 0.4, clearcoat: 0.6, clearcoatRoughness: 0.35, side: THREE.DoubleSide }),
-    abdBand: new THREE.MeshPhysicalMaterial({ color: 0x3a2412, roughness: 0.4, clearcoat: 0.6, clearcoatRoughness: 0.3, side: THREE.DoubleSide }),
-    black: new THREE.MeshStandardMaterial({ color: 0x1c140c, roughness: 0.6, side: THREE.DoubleSide }),
-    brown: new THREE.MeshStandardMaterial({ color: 0x4a3620, roughness: 0.7, side: THREE.DoubleSide }),
-    lower: new THREE.MeshStandardMaterial({ color: 0xf1dcb6, roughness: 0.5, side: THREE.DoubleSide }),
-    leg: new THREE.MeshStandardMaterial({ color: 0xcf9a5e, roughness: 0.55, side: THREE.DoubleSide }),
-    ocelli: new THREE.MeshPhysicalMaterial({ color: 0x8a2a1a, roughness: 0.2, clearcoat: 1, side: THREE.DoubleSide }),
+    eye: new THREE.MeshStandardMaterial({ color: 0xff2e1c, emissive: 0xb01e10, emissiveIntensity: 0.9, roughness: 0.35, side: THREE.DoubleSide, depthTest: false }),
+    wing: new THREE.MeshPhysicalMaterial({ color: 0xcfe6ff, roughness: 0.08, transparent: true, opacity: 0.26, side: THREE.DoubleSide, depthWrite: false, clearcoat: 0.8 }),
+    body: new THREE.MeshPhysicalMaterial({ color: 0x10285c, emissive: 0x04142f, emissiveIntensity: 0.5, roughness: 0.32, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.25, sheen: 1, sheenColor: 0x3d8dff, sheenRoughness: 0.5, side: THREE.FrontSide }),
+    thorax: new THREE.MeshPhysicalMaterial({ color: 0x0f2350, emissive: 0x04142f, emissiveIntensity: 0.5, roughness: 0.3, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.2, sheen: 1, sheenColor: 0x4aa3ff, sheenRoughness: 0.45, side: THREE.FrontSide }),
+    head: new THREE.MeshPhysicalMaterial({ color: 0x0f2350, emissive: 0x04142f, emissiveIntensity: 0.4, roughness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.3, sheen: 0.8, sheenColor: 0x4aa3ff, side: THREE.FrontSide }),
+    abdBand: new THREE.MeshPhysicalMaterial({ color: 0x0a0f1c, emissive: 0x02060f, emissiveIntensity: 0.3, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.2, side: THREE.FrontSide }),
+    black: new THREE.MeshPhysicalMaterial({ color: 0x0c1a36, emissive: 0x04102a, emissiveIntensity: 0.5, roughness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.25, sheen: 1, sheenColor: 0x3d8dff, side: THREE.DoubleSide }),
+    brown: new THREE.MeshStandardMaterial({ color: 0x1a2233, roughness: 0.7, side: THREE.FrontSide }),
+    lower: new THREE.MeshPhysicalMaterial({ color: 0x2f62b8, emissive: 0x0a2a66, emissiveIntensity: 0.4, roughness: 0.45, clearcoat: 0.6, sheen: 0.6, sheenColor: 0x6fb8ff, side: THREE.FrontSide }),
+    leg: new THREE.MeshStandardMaterial({ color: 0x1e3a6e, emissive: 0x081c40, emissiveIntensity: 0.4, roughness: 0.5, metalness: 0.1, side: THREE.FrontSide }),
+    ocelli: new THREE.MeshPhysicalMaterial({ color: 0x8a2a1a, roughness: 0.2, clearcoat: 1, side: THREE.FrontSide }),
   };
   const matFor = (g) => {
     const n = g.mesh.toLowerCase();
@@ -63,6 +71,7 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
     if (ab) { const i = +ab[1]; if (n.includes('lower')) return mats.lower; return (i >= 5 || i === 2) ? mats.abdBand : mats.body; }
     if (n.includes('lower')) return mats.lower;
     if (n.startsWith('thorax')) return mats.thorax;
+    if (n.startsWith('head')) return mats.head;
     if (/coxa|femur|tibia|tarsus/.test(n)) return mats.leg;
     return mats.body;
   };
@@ -91,7 +100,7 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
     }
     if (!gltf) { console.warn('missing', glb); return; }
     const mesh = gltf.scene;
-    mesh.traverse(o => { if (o.isMesh) { o.material = matFor(g); o.frustumCulled = false; if (o.material === mats.eye) o.renderOrder = 10; } });
+    mesh.traverse(o => { if (o.isMesh) { o.material = matFor(g); o.frustumCulled = false; o.castShadow = o.material !== mats.wing; if (o.material === mats.eye) o.renderOrder = 10; } });
     const m = new THREE.Matrix4().set(
       g.mat[0], g.mat[1], g.mat[2], g.pos[0],
       g.mat[3], g.mat[4], g.mat[5], g.pos[1],
@@ -124,8 +133,8 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
   const box = new THREE.Box3().setFromObject(parts.rest);
   const c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
   const u = bodyLength / size.x;
-  model.scale.set(u, -u, u);
-  model.position.set(-c.x * u, c.y * u, -c.z * u);
+  model.scale.set(u, -u, -u);
+  model.position.set(-c.x * u, c.y * u, c.z * u);
   console.log('fly3d body size (model units)', size.toArray().map(v => +v.toFixed(3)), 'centre', c.toArray().map(v => +v.toFixed(3)));
   const restQuat = { wingL: parts.wingL.quaternion.clone(), wingR: parts.wingR.quaternion.clone() };
   // rest pose: each wing lies flat along the back. Find the wing tip (farthest point from the hinge, in
@@ -155,14 +164,46 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
     if (!ok[bad] && ok[good]) { const q = foldQuat[good]; foldQuat[bad] = new THREE.Quaternion(-q.x, q.y, -q.z, q.w); }
   }
   console.log('wing folds ok', ok);
+  // wing wash: a faint trail of air-borne motes shed from the wing hinges while flying; spread and
+  // speed scale with airspeed, and each mote fades (additive blend, colour -> black) over ~0.5 s
+  const N_P = 480;
+  const pPos = new Float32Array(N_P * 3), pCol = new Float32Array(N_P * 3), pVel = new Float32Array(N_P * 3), pLife = new Float32Array(N_P);
+  const pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3)); pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
+  const points = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 3, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: false }));
+  points.frustumCulled = false; scene.add(points);
+  let pNext = 0;
+  const _hinge = new THREE.Vector3();
+  function emit(f, dt) {
+    const speed = f.speed || 150, n = f.flying ? Math.min(16, 3 + speed / 40) : 0;
+    for (let k = 0; k < n; k++) {
+      const i = pNext++ % N_P, side = k % 2 ? 'wingL' : 'wingR';
+      parts[side].getWorldPosition(_hinge);
+      const back = f.heading + Math.PI + (Math.random() - 0.5) * (0.5 + speed / 600);
+      const v = 40 + speed * 0.45 + Math.random() * 40;
+      pPos[i * 3] = _hinge.x + (Math.random() - 0.5) * 6; pPos[i * 3 + 1] = _hinge.y + (Math.random() - 0.5) * 6; pPos[i * 3 + 2] = _hinge.z - 8;
+      pVel[i * 3] = Math.cos(back) * v; pVel[i * 3 + 1] = Math.sin(back) * v; pVel[i * 3 + 2] = (Math.random() - 0.5) * 20;
+      pLife[i] = 0.6 + Math.random() * 0.5;
+    }
+    for (let i = 0; i < N_P; i++) {
+      if (pLife[i] <= 0) { pCol[i * 3] = pCol[i * 3 + 1] = pCol[i * 3 + 2] = 0; continue; }
+      pLife[i] -= dt;
+      pPos[i * 3] += pVel[i * 3] * dt; pPos[i * 3 + 1] += pVel[i * 3 + 1] * dt; pPos[i * 3 + 2] += pVel[i * 3 + 2] * dt;
+      pVel[i * 3] *= 0.985; pVel[i * 3 + 1] *= 0.985;
+      const a = Math.max(0, Math.min(1, pLife[i] / 0.6)) * 0.55;
+      pCol[i * 3] = 0.35 * a; pCol[i * 3 + 1] = 0.6 * a; pCol[i * 3 + 2] = 1.0 * a;
+    }
+    pGeo.attributes.position.needsUpdate = true; pGeo.attributes.color.needsUpdate = true;
+  }
   const REST_FOLD = +(new URLSearchParams(location.search).get('fold') || -1.25);
   // state: {x, y, heading, roll, alt, flying, wingPhase, proboscis, scale}
-  function render(f) {
+  function render(f, dt = 1 / 60) {
     const sc = (f.scale || 1) / 2.6;
-    root.position.set(f.x, f.y, f.z || 0);
+    root.position.set(f.x, f.y, -((f.z || 0) + 70 * (f.alt || 0)));   // altitude lifts it off the glass (toward the viewer), so the shadow drifts
+    key.position.set(f.x - 260, f.y - 420, -760); key.target.position.set(f.x, f.y, 0);
     root.rotation.set(0, 0, f.heading);
     root.scale.setScalar(sc * (1 + 0.22 * (f.alt || 0)));
-    tilt.rotation.y = 0.35 * (f.roll || 0);
+    tilt.rotation.y = -0.35 * (f.roll || 0);
     for (const key of ['wingL', 'wingR']) {
       const w = parts[key], ax = w.userData.axis; if (!ax) continue;
       const side = key === 'wingL' ? 1 : -1;
@@ -175,6 +216,7 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
       }
     }
     parts.proboscis.position.set(0, 0, -0.35 * (f.proboscis || 0) * len * 0.12);
+    emit(f, dt);
     renderer.render(scene, camera);
   }
   // ---- sugar cubes: grainy white boxes standing on the screen, same slight tilt as the fly
@@ -183,7 +225,8 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
     for (let i = 0; i < 2600; i++) { const v = 228 + Math.random() * 27; g.fillStyle = `rgb(${v},${v - 4},${v - 12})`; g.fillRect(Math.random() * 128, Math.random() * 128, 1 + Math.random() * 2, 1 + Math.random() * 2); }
     for (let i = 0; i < 160; i++) { g.fillStyle = 'rgba(255,255,255,0.95)'; g.fillRect(Math.random() * 128, Math.random() * 128, 1, 1); } }
   const grainTex = new THREE.CanvasTexture(grain); grainTex.wrapS = grainTex.wrapT = THREE.RepeatWrapping;
-  const sugarMat = new THREE.MeshPhysicalMaterial({ map: grainTex, color: 0xffffff, emissive: 0x2a2622, roughness: 0.5, clearcoat: 0.4, clearcoatRoughness: 0.5, sheen: 0.8, sheenColor: 0xfff4e0 });
+  const sugarMat = new THREE.MeshPhysicalMaterial({ map: grainTex, bumpMap: grainTex, bumpScale: 0.35, color: 0xffffff, emissive: 0x2a2622, roughness: 0.55, clearcoat: 0.5, clearcoatRoughness: 0.45, sheen: 0.9, sheenColor: 0xfff4e0 });
+  new THREE.TextureLoader().load('assets/sugar.png', tex => { tex.colorSpace = THREE.SRGBColorSpace; tex.wrapS = tex.wrapT = THREE.RepeatWrapping; sugarMat.map = tex; sugarMat.bumpMap = tex; sugarMat.bumpScale = 0.6; sugarMat.needsUpdate = true; }, undefined, () => {});
   const cubeMeshes = new Map();
   function setCubes(list, size = 24) {
     const seen = new Set();
@@ -191,13 +234,13 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
       seen.add(c);
       let m = cubeMeshes.get(c);
       if (!m) {
-        m = new THREE.Group(); const t = new THREE.Group(); t.rotation.x = -0.22; m.add(t);
-        const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), sugarMat); box.position.z = 0.5; t.add(box); m.userData.box = box;
+        m = new THREE.Group(); const t = new THREE.Group(); t.rotation.x = 0.22; m.add(t);
+        const box = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), sugarMat); box.position.z = 0.5; box.castShadow = box.receiveShadow = true; t.add(box); m.userData.box = box;
         scene.add(m); cubeMeshes.set(c, m);
       }
       const side = size * (0.5 + 0.5 * Math.max(0, c.amount));
       m.position.set(c.x, c.y + size / 2, 0);
-      m.userData.box.scale.set(side, side, side * 0.95); m.userData.box.position.z = side * 0.475;
+      m.userData.box.scale.set(side, side, side * 0.95); m.userData.box.position.z = -side * 0.475;
       m.visible = c.amount > 0.01;
     }
     for (const [c, m] of cubeMeshes) if (!seen.has(c)) { scene.remove(m); cubeMeshes.delete(c); }
