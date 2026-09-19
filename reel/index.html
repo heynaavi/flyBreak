@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=1920, height=1080" />
+<title>FlyBreak — submission reel</title>
+<script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+<style>
+  body { margin: 0; background: #05070d; color: #eaf2ff; font-family: system-ui, -apple-system, sans-serif; }
+  #root { position: relative; width: 100%; height: 100%; overflow: hidden; background: #05070d; }
+  .clip { position: absolute; inset: 0; }
+  .stage { position: absolute; inset: 0; background: radial-gradient(ellipse 70% 60% at 50% 40%, #0b1120 0%, #05070d 70%); }
+  .vignette { position: absolute; inset: 0; background: radial-gradient(ellipse 80% 75% at 50% 45%, rgba(0,0,0,0) 40%, rgba(0,0,0,0.75) 100%); }
+  .notch { position: absolute; left: 50%; top: 0; width: 380px; height: 64px; margin-left: -190px; background: #000; border-radius: 0 0 26px 26px; box-shadow: 0 0 0 1.5px rgba(150,205,255,0.0); }
+  .rim { position: absolute; left: 50%; top: -6px; width: 392px; height: 76px; margin-left: -196px; border-radius: 0 0 30px 30px; border: 2px solid rgba(150,205,255,0.9); box-shadow: 0 0 24px rgba(120,190,255,0.8), inset 0 0 18px rgba(120,190,255,0.35); opacity: 0; }
+  .mono { font-family: ui-monospace, Menlo, monospace; }
+  .kicker { position: absolute; left: 160px; top: 150px; font-size: 26px; letter-spacing: 0.32em; color: #7fd3ff; text-transform: uppercase; opacity: 0; }
+  .title { position: absolute; left: 160px; top: 270px; font-size: 168px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+  .title span { display: inline-block; }
+  .sub { position: absolute; left: 164px; top: 560px; width: 1000px; font-size: 40px; line-height: 1.3; color: #b9c8e6; opacity: 0; }
+  .big { position: absolute; left: 160px; top: 250px; font-size: 150px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; color: #fff; }
+  .big small { display: block; font-size: 34px; font-weight: 500; letter-spacing: 0.18em; color: #7fd3ff; text-transform: uppercase; margin-top: 18px; }
+  .meta { position: absolute; left: 164px; top: 520px; font-size: 26px; color: #8fa2c6; opacity: 0; }
+  .path { position: absolute; left: 160px; display: flex; align-items: center; gap: 18px; font-size: 30px; opacity: 0; }
+  .chip { display: inline-block; padding: 12px 22px; border-radius: 14px; border: 1.5px solid rgba(127,211,255,0.35); background: rgba(20,40,80,0.55); color: #cfe6ff; }
+  .chip.hot { border-color: #7fd3ff; box-shadow: 0 0 22px rgba(127,211,255,0.55); color: #fff; }
+  .chip.end { background: rgba(255,60,40,0.18); border-color: rgba(255,120,100,0.6); color: #ffb4a6; }
+  .chip.eat { background: rgba(255,200,80,0.14); border-color: rgba(255,210,120,0.6); color: #ffe2a8; }
+  .arrow { color: #5f7aa8; }
+  .net { position: absolute; right: 120px; top: 180px; width: 720px; height: 720px; }
+  .cube { position: absolute; width: 96px; height: 96px; }
+  .lines { position: absolute; left: 160px; top: 760px; font-size: 44px; line-height: 1.35; color: #dbe7ff; }
+  .lines div { opacity: 0; }
+  .tag { position: absolute; left: 160px; top: 380px; font-size: 96px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.12; }
+  .tag div { opacity: 0; }
+  .tag .b { color: #7fd3ff; }
+  .foot { position: absolute; left: 164px; top: 860px; font-size: 28px; color: #8fa2c6; opacity: 0; }
+  .foot b { color: #eaf2ff; font-weight: 600; }
+  .cursor { position: absolute; width: 44px; height: 60px; opacity: 0; }
+  .flash { position: absolute; inset: 0; background: radial-gradient(circle at 50% 8%, rgba(150,205,255,0.35), rgba(0,0,0,0) 45%); opacity: 0; }
+  .dust { position: absolute; border-radius: 50%; background: #cfe3ff; }
+</style>
+</head>
+<body>
+<div id="root" data-composition-id="main" data-start="0" data-width="1920" data-height="1080" data-duration="20">
+
+  <!-- shared stage -->
+  <div class="stage"></div>
+  <div id="dust"></div>
+  <div class="vignette"></div>
+  <div class="notch"></div>
+  <div id="rim" class="rim"></div>
+  <div id="flash" class="flash"></div>
+
+  <!-- 1 · title -->
+  <section id="s1" class="clip" data-start="0" data-duration="5.6" data-track-index="1">
+    <svg id="fly1" width="140" height="140" viewBox="-50 -50 100 100" style="position:absolute; left:890px; top:-120px; overflow:visible">
+      <g id="fly1-g">
+        <g id="fly1-wl" style="transform-origin:-6px 0"><path d="M-6 -2 C -30 -50, -70 -46, -62 -22 C -56 -6, -30 -2, -6 -2 Z" fill="rgba(190,225,255,0.35)" stroke="rgba(230,244,255,0.7)" stroke-width="1"/></g>
+        <g id="fly1-wr" style="transform-origin:-6px 0"><path d="M-6 2 C -30 50, -70 46, -62 22 C -56 6, -30 2, -6 2 Z" fill="rgba(190,225,255,0.35)" stroke="rgba(230,244,255,0.7)" stroke-width="1"/></g>
+        <ellipse cx="-22" cy="0" rx="22" ry="11" fill="#1f62c8"/>
+        <ellipse cx="-30" cy="0" rx="3" ry="11" fill="#0e2d6e"/><ellipse cx="-20" cy="0" rx="3" ry="11" fill="#0e2d6e"/>
+        <ellipse cx="0" cy="0" rx="14" ry="12" fill="#2a74e0"/>
+        <ellipse cx="16" cy="0" rx="9" ry="10" fill="#1f62c8"/>
+        <ellipse cx="19" cy="-6" rx="5" ry="4.5" fill="#ff3b2a"/><ellipse cx="19" cy="6" rx="5" ry="4.5" fill="#ff3b2a"/>
+        <path d="M-4 -9 L-14 -26 M4 -8 L2 -26 M-4 9 L-14 26 M4 8 L2 26 M-14 -7 L-30 -22 M-14 7 L-30 22" stroke="#27334d" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </g>
+    </svg>
+    <div id="trail1"></div>
+    <div class="kicker" id="k1">Claude Community Hackathon · Delight</div>
+    <h1 class="title" id="t1"></h1>
+    <p class="sub" id="sub1">A fruit fly with the <b>real fruit-fly brain</b> lives in your MacBook notch.</p>
+  </section>
+
+  <!-- 2 · the real brain -->
+  <section id="s2" class="clip" data-start="5.6" data-duration="6" data-track-index="1">
+    <div class="kicker" id="k2" style="top:150px">The real brain</div>
+    <div class="big" id="n2"><span id="count">0</span><small id="n2s">neurons · 24.5M synapses</small></div>
+    <div class="meta" id="m2">MaleCNS v1.0 · Google Research + HHMI Janelia · released 3 Sep 2026 · simulated live on the Mac GPU</div>
+    <div class="path" id="p1" style="top:660px"><span class="chip">your cursor</span><span class="arrow">→</span><span class="chip">LPLC2 / LC4</span><span class="arrow">→</span><span class="chip">DNp01 giant fiber</span><span class="arrow">→</span><span class="chip end">ESCAPE · 300 Hz</span></div>
+    <div class="path" id="p2" style="top:760px"><span class="chip">sugar</span><span class="arrow">→</span><span class="chip">LB3</span><span class="arrow">→</span><span class="chip">MN9 proboscis</span><span class="arrow">→</span><span class="chip eat">EAT · 68 Hz</span></div>
+    <svg id="net" class="net" viewBox="0 0 720 720"></svg>
+  </section>
+
+  <!-- 3 · the break -->
+  <section id="s3" class="clip" data-start="11.6" data-duration="5.2" data-track-index="1">
+    <div class="kicker" id="k3" style="top:150px">The break</div>
+    <div id="cubes"></div>
+    <svg id="fly2" width="140" height="140" viewBox="-50 -50 100 100" style="position:absolute; left:890px; top:-120px; overflow:visible">
+      <g id="fly2-g">
+        <g id="fly2-wl" style="transform-origin:-6px 0"><path d="M-6 -2 C -30 -50, -70 -46, -62 -22 C -56 -6, -30 -2, -6 -2 Z" fill="rgba(190,225,255,0.35)" stroke="rgba(230,244,255,0.7)" stroke-width="1"/></g>
+        <g id="fly2-wr" style="transform-origin:-6px 0"><path d="M-6 2 C -30 50, -70 46, -62 22 C -56 6, -30 2, -6 2 Z" fill="rgba(190,225,255,0.35)" stroke="rgba(230,244,255,0.7)" stroke-width="1"/></g>
+        <ellipse cx="-22" cy="0" rx="22" ry="11" fill="#1f62c8"/>
+        <ellipse cx="-30" cy="0" rx="3" ry="11" fill="#0e2d6e"/><ellipse cx="-20" cy="0" rx="3" ry="11" fill="#0e2d6e"/>
+        <ellipse cx="0" cy="0" rx="14" ry="12" fill="#2a74e0"/>
+        <ellipse cx="16" cy="0" rx="9" ry="10" fill="#1f62c8"/>
+        <ellipse cx="19" cy="-6" rx="5" ry="4.5" fill="#ff3b2a"/><ellipse cx="19" cy="6" rx="5" ry="4.5" fill="#ff3b2a"/>
+        <path d="M-4 -9 L-14 -26 M4 -8 L2 -26 M-4 9 L-14 26 M4 8 L2 26 M-14 -7 L-30 -22 M-14 7 L-30 22" stroke="#27334d" stroke-width="2" fill="none" stroke-linecap="round"/>
+      </g>
+    </svg>
+    <svg id="cur" class="cursor" viewBox="0 0 22 30"><path d="M2 2 L2 24 L8 18 L12 28 L16 26 L12 17 L20 17 Z" fill="#fff" stroke="#111" stroke-width="1.5" stroke-linejoin="round"/></svg>
+    <div id="esc" class="chip end mono" style="position:absolute; left:1180px; top:300px; font-size:26px; opacity:0">LPLC2/LC4 → DNp01 · ESCAPE 300 Hz</div>
+    <div class="lines" id="l3"><div>Focus ends. The stage dims.</div><div>Sugar drops into the notch.</div><div>Your cursor is the predator.</div></div>
+  </section>
+
+  <!-- 4 · close -->
+  <section id="s4" class="clip" data-start="16.8" data-duration="3.2" data-track-index="1">
+    <div class="tag" id="t4"><div>Your cursor is the predator.</div><div class="b">Feeding it is your break.</div></div>
+    <div class="foot" id="f4"><b>FlyBreak</b> · built solo with Claude Fable 5.1 · github.com/heynaavi/flyBreak</div>
+  </section>
+</div>
+
+<script>
+  // seeded randomness only: renders must be reproducible frame for frame
+  let seed = 20260919; const rnd = () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
+
+  // --- dust across the stage (shared), and the neural net for card 2
+  const dust = document.getElementById('dust');
+  const motes = [];
+  for (let i = 0; i < 90; i++) { const d = document.createElement('div'); d.className = 'dust'; const r = 1 + rnd() * 2.2;
+    d.style.cssText = `left:${rnd() * 1920}px; top:${rnd() * 1080}px; width:${r}px; height:${r}px; opacity:${0.08 + rnd() * 0.25}`; dust.appendChild(d); motes.push(d); }
+  const net = document.getElementById('net'); const ns = 'http://www.w3.org/2000/svg';
+  const pts = []; for (let i = 0; i < 64; i++) pts.push([60 + rnd() * 600, 60 + rnd() * 600]);
+  const links = [];
+  for (let i = 0; i < pts.length; i++) for (let j = i + 1; j < pts.length; j++) {
+    const dx = pts[i][0] - pts[j][0], dy = pts[i][1] - pts[j][1]; if (dx * dx + dy * dy < 120 * 120) {
+      const l = document.createElementNS(ns, 'line'); l.setAttribute('x1', pts[i][0]); l.setAttribute('y1', pts[i][1]); l.setAttribute('x2', pts[j][0]); l.setAttribute('y2', pts[j][1]);
+      l.setAttribute('stroke', 'rgba(127,211,255,0.35)'); l.setAttribute('stroke-width', '1'); net.appendChild(l); links.push(l); } }
+  const nodes = pts.map(p => { const c = document.createElementNS(ns, 'circle'); c.setAttribute('cx', p[0]); c.setAttribute('cy', p[1]); c.setAttribute('r', 3.2); c.setAttribute('fill', '#9fdcff'); net.appendChild(c); return c; });
+
+  // --- title letters
+  const t1 = document.getElementById('t1'); const letters = [...'FlyBreak'].map(ch => { const s = document.createElement('span'); s.textContent = ch; t1.appendChild(s); return s; });
+
+  // --- trail dots behind the emerging fly (card 1)
+  const trail = document.getElementById('trail1'); const tdots = [];
+  for (let i = 0; i < 26; i++) { const d = document.createElement('div'); d.className = 'dust'; d.style.cssText = 'width:6px;height:6px;opacity:0;background:#9fdcff;box-shadow:0 0 10px #7fd3ff'; trail.appendChild(d); tdots.push(d); }
+
+  // --- sugar cubes (card 3): three isometric SVG cubes at the notch mouth
+  const cubes = document.getElementById('cubes'); const cubeEls = [];
+  for (let i = 0; i < 3; i++) { const w = document.createElement('div'); w.className = 'cube'; w.style.left = (960 - 48 + (i - 1) * 130) + 'px'; w.style.top = '-140px';
+    w.innerHTML = `<svg viewBox="0 0 96 96" width="96" height="96"><polygon points="14,30 62,30 62,78 14,78" fill="#f4efe6"/><polygon points="14,30 30,14 78,14 62,30" fill="#ffffff"/><polygon points="62,30 78,14 78,62 62,78" fill="#d8d0c2"/><g fill="#fff" opacity="0.9"><circle cx="24" cy="44" r="1.6"/><circle cx="40" cy="60" r="1.4"/><circle cx="52" cy="40" r="1.2"/><circle cx="30" cy="70" r="1.3"/></g></svg>`;
+    cubes.appendChild(w); cubeEls.push(w); }
+
+  const tl = gsap.timeline({ paused: true });
+  const wingBeat = (l, r, from, dur) => { tl.fromTo([l, r], { scaleY: 1 }, { scaleY: 0.25, duration: 0.05, yoyo: true, repeat: Math.round(dur / 0.05) - 1, ease: 'sine.inOut' }, from); };
+
+  // ================= card 1 · title (0 – 5.6)
+  tl.to('#rim', { opacity: 1, duration: 0.5, ease: 'sine.out' }, 0.2).to('#rim', { opacity: 0.35, duration: 0.8 }, 0.7);
+  tl.to('#flash', { opacity: 1, duration: 0.15 }, 0.55).to('#flash', { opacity: 0, duration: 0.9 }, 0.7);
+  // emerge from the notch, peel away to the right, loop back to hover by the title
+  tl.fromTo('#fly1', { x: 0, y: 0, rotation: 90 }, { y: 200, duration: 0.7, ease: 'power2.out' }, 0.6)
+    .to('#fly1', { x: 420, y: 330, rotation: 40, duration: 0.9, ease: 'power1.inOut' }, 1.3)
+    .to('#fly1', { x: 620, y: 300, rotation: -20, duration: 0.7, ease: 'power1.inOut' }, 2.2)
+    .to('#fly1', { x: 640, y: 320, rotation: -10, duration: 2.6, ease: 'sine.inOut' }, 2.9)
+    .to('#fly1', { x: 660, y: 310, duration: 0.6, ease: 'sine.inOut', yoyo: true, repeat: 3 }, 2.9);
+  wingBeat('#fly1-wl', '#fly1-wr', 0.6, 5.0);
+  // trail: dots appear along the path with delays and fade
+  const path1 = [[0, 60], [30, 140], [90, 220], [170, 300], [260, 360], [350, 400], [430, 420], [500, 420], [560, 400], [610, 370]];
+  tdots.forEach((d, i) => { const p = path1[Math.min(path1.length - 1, Math.floor(i / 2.6))]; const jx = (rnd() - 0.5) * 40, jy = (rnd() - 0.5) * 40;
+    tl.fromTo(d, { x: 960 + p[0] + jx, y: p[1] + jy, opacity: 0, scale: 0.6 }, { opacity: 0.8, scale: 1.4, duration: 0.25, ease: 'sine.out' }, 0.9 + i * 0.075)
+      .to(d, { opacity: 0, y: p[1] + jy - 30, duration: 0.9, ease: 'sine.in' }, 1.15 + i * 0.075); });
+  tl.to('#k1', { opacity: 1, duration: 0.5 }, 1.0);
+  tl.fromTo(letters, { y: 90, opacity: 0, rotationX: -60 }, { y: 0, opacity: 1, rotationX: 0, duration: 0.7, stagger: 0.06, ease: 'back.out(1.6)' }, 1.4);
+  tl.to('#sub1', { opacity: 1, duration: 0.6 }, 2.6).fromTo('#sub1', { y: 24 }, { y: 0, duration: 0.6, ease: 'power2.out' }, 2.6);
+  tl.to(['#k1', '#t1', '#sub1', '#fly1'], { opacity: 0, duration: 0.35, ease: 'power1.in' }, 5.2);
+
+  // ================= card 2 · the real brain (5.6 – 11.6)
+  const c2 = 5.6;
+  tl.to('#k2', { opacity: 1, duration: 0.4 }, c2 + 0.1);
+  const counter = { v: 0 }; const countEl = document.getElementById('count');
+  tl.fromTo('#n2', { y: 40, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6, ease: 'power3.out' }, c2 + 0.2);
+  tl.to(counter, { v: 166700, duration: 1.8, ease: 'power2.out', onUpdate: () => { countEl.textContent = Math.round(counter.v).toLocaleString('en-US'); } }, c2 + 0.3);
+  tl.to('#m2', { opacity: 1, duration: 0.5 }, c2 + 1.6);
+  tl.fromTo(nodes, { opacity: 0, scale: 0 }, { opacity: 1, scale: 1, duration: 0.5, stagger: { each: 0.012, from: 'random' }, ease: 'back.out(2)', transformOrigin: '50% 50%' }, c2 + 0.3);
+  tl.fromTo(links, { opacity: 0 }, { opacity: 1, duration: 0.4, stagger: { each: 0.004, from: 'random' } }, c2 + 0.8);
+  // waves of activity: nodes flare in seeded groups
+  for (let w = 0; w < 5; w++) { const group = nodes.filter(() => rnd() < 0.35); tl.to(group, { fill: '#ffffff', r: 6, duration: 0.18, ease: 'sine.out' }, c2 + 1.6 + w * 0.7).to(group, { fill: '#9fdcff', r: 3.2, duration: 0.5, ease: 'sine.in' }, c2 + 1.8 + w * 0.7); }
+  // pathways: chips light in sequence like a spike travelling
+  for (const [id, at] of [['#p1', c2 + 2.4], ['#p2', c2 + 3.9]]) {
+    tl.fromTo(id, { opacity: 0, x: -30 }, { opacity: 1, x: 0, duration: 0.45, ease: 'power2.out' }, at);
+    const chips = document.querySelectorAll(id + ' .chip');
+    chips.forEach((ch, i) => { tl.to(ch, { boxShadow: '0 0 26px rgba(127,211,255,0.75)', borderColor: '#9fdcff', color: '#fff', duration: 0.12 }, at + 0.5 + i * 0.28).to(ch, { boxShadow: '0 0 0px rgba(127,211,255,0)', duration: 0.5 }, at + 0.75 + i * 0.28); });
+  }
+  tl.to(['#k2', '#n2', '#m2', '#p1', '#p2', '#net'], { opacity: 0, duration: 0.35, ease: 'power1.in' }, c2 + 5.6);
+
+  // ================= card 3 · the break (11.6 – 16.8)
+  const c3 = 11.6;
+  tl.to('#k3', { opacity: 1, duration: 0.4 }, c3 + 0.1);
+  tl.to('#rim', { opacity: 1, duration: 0.4 }, c3 + 0.3).to('#rim', { opacity: 0.35, duration: 0.8 }, c3 + 0.8);
+  cubeEls.forEach((c, i) => tl.to(c, { y: 190, duration: 0.8, ease: 'bounce.out' }, c3 + 0.5 + i * 0.35));
+  const lines3 = document.querySelectorAll('#l3 div');
+  tl.fromTo(lines3[0], { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5 }, c3 + 0.3);
+  tl.fromTo(lines3[1], { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.5 }, c3 + 1.2);
+  // fly emerges, circles, lands on the middle cube, folds its wings
+  tl.fromTo('#fly2', { x: 0, y: 0, rotation: 90, opacity: 1 }, { y: 210, duration: 0.6, ease: 'power2.out' }, c3 + 0.2)
+    .to('#fly2', { x: -380, y: 420, rotation: 200, duration: 0.9, ease: 'power1.inOut' }, c3 + 0.8)
+    .to('#fly2', { x: -120, y: 260, rotation: 300, duration: 0.8, ease: 'power1.inOut' }, c3 + 1.7)
+    .to('#fly2', { x: 0, y: 150, rotation: 270, duration: 0.6, ease: 'power2.inOut' }, c3 + 2.5);
+  wingBeat('#fly2-wl', '#fly2-wr', c3 + 0.2, 2.9);
+  tl.to(['#fly2-wl', '#fly2-wr'], { scaleY: 0.18, duration: 0.25, ease: 'power2.out' }, c3 + 3.1);   // wings fold on touchdown
+  // the cursor swoops in — the giant fiber fires — the fly jumps
+  tl.fromTo('#cur', { x: 1500, y: 700, opacity: 0 }, { opacity: 1, duration: 0.2 }, c3 + 3.3)
+    .to('#cur', { x: 1020, y: 250, duration: 0.55, ease: 'power3.in' }, c3 + 3.4);
+  tl.fromTo(lines3[2], { opacity: 0, y: 20 }, { opacity: 1, y: 0, duration: 0.4 }, c3 + 3.3);
+  tl.to('#flash', { opacity: 1, duration: 0.08 }, c3 + 3.95).to('#flash', { opacity: 0, duration: 0.6 }, c3 + 4.05);
+  tl.to('#esc', { opacity: 1, duration: 0.08 }, c3 + 3.95).fromTo('#esc', { scale: 0.9 }, { scale: 1, duration: 0.2, ease: 'back.out(3)' }, c3 + 3.95);
+  tl.to(['#fly2-wl', '#fly2-wr'], { scaleY: 1, duration: 0.08 }, c3 + 3.95);
+  wingBeat('#fly2-wl', '#fly2-wr', c3 + 4.0, 1.1);
+  tl.to('#fly2', { x: 520, y: 560, rotation: 330, duration: 0.5, ease: 'power3.out' }, c3 + 3.96)
+    .to('#fly2', { x: 700, y: 520, rotation: 350, duration: 0.6, ease: 'sine.inOut' }, c3 + 4.46);
+  tl.to(['#k3', '#l3', '#cubes', '#fly2', '#cur', '#esc'], { opacity: 0, duration: 0.35, ease: 'power1.in' }, c3 + 4.85);
+
+  // ================= card 4 · close (16.8 – 20)
+  const c4 = 16.8, tag = document.querySelectorAll('#t4 div');
+  tl.fromTo(tag[0], { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, c4 + 0.1);
+  tl.fromTo(tag[1], { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 0.6, ease: 'power3.out' }, c4 + 0.5);
+  tl.to('#f4', { opacity: 1, duration: 0.5 }, c4 + 1.2);
+  tl.to('#rim', { opacity: 1, duration: 0.6 }, c4 + 0.4);
+
+  // dust drifts slowly for the whole piece (finite, seek-safe)
+  motes.forEach(d => tl.to(d, { y: -(20 + rnd() * 40), x: (rnd() - 0.5) * 30, duration: 20, ease: 'none' }, 0));
+
+  window.__timelines['main'] = tl;
+</script>
+</body>
+</html>
