@@ -77,7 +77,7 @@
   }
   function dropCube(i) {
     // cubes settle in the notch's mouth: their top faces overlap the cutout and get clipped by it
-    const c = { x: NOTCH.cx + (i - 1) * 26, y: NOTCH.h - 40, amount: 0, land: NOTCH.h - 9 };
+    const c = { x: NOTCH.cx + (i - 1) * 26, y: NOTCH.h - 30, amount: 0, land: NOTCH.h + 8 };
     sugar.cubes.push(c);
     gsap.to(c, { amount: 1, duration: 0.35 });
     gsap.to(c, { y: c.land, duration: 0.7, ease: 'bounce.out' });
@@ -172,7 +172,7 @@
         // settle on top of the cube, head down into it, legs gripping
         fly.mode = 'feed'; fly.flying = false; fly.speed = 0; fly.roll = 0; fly.feeding = true;
         event('LB3 → MN9: proboscis extension, feeding', `${feedHz.toFixed(0)} Hz`);
-        gsap.to(fly, { alt: 0, x: cube.x - 2, y: cube.y - 12, heading: Math.PI / 2, duration: 0.35, ease: 'power2.out' });
+        gsap.to(fly, { alt: 0, x: cube.x + 2, y: cube.y + 14 + 9 * fly.scale, heading: -Math.PI / 2, duration: 0.35, ease: 'power2.out' });
       }
       fly.proboscis += (1 - fly.proboscis) * Math.min(1, dt * 6);
       cube.amount -= dt * 0.09;
@@ -237,16 +237,13 @@
     // the break dims the desktop so the fly and the sugar carry the light
     if (app.dim > 0.005) { ctx.fillStyle = `rgba(4,6,12,${app.dim})`; ctx.fillRect(0, 0, W, H); }
     const act = clamp(brain.active / 4000, 0, 1);
-    const R = NOTCH.w * (0.9 + 0.5 * app.pulse);
-    const g = ctx.createRadialGradient(NOTCH.cx, NOTCH.h, NOTCH.w * 0.3, NOTCH.cx, NOTCH.h, R);
-    g.addColorStop(0, `rgba(130,195,255,${0.10 + 0.15 * act + 0.30 * app.pulse + 0.35 * app.flash})`);
-    g.addColorStop(0.6, `rgba(170,130,255,${0.04 + 0.06 * act + 0.12 * app.pulse + 0.15 * app.flash})`);
-    g.addColorStop(1, 'rgba(130,195,255,0)');
-    ctx.fillStyle = g; ctx.fillRect(NOTCH.cx - R, 0, R * 2, R);
-    // the notch rim: a thin lit oval that "opens" for the sugar
-    if (app.pulse > 0.02) {
-      ctx.strokeStyle = `rgba(200,230,255,${0.5 * app.pulse})`; ctx.lineWidth = 1.2;
+    // the notch rim: a thin lit outline that "opens" for the sugar and flashes when the giant fiber fires
+    const rim = clamp(0.5 * app.pulse + 0.6 * app.flash, 0, 1);
+    if (rim > 0.02) {
+      ctx.save(); ctx.shadowColor = 'rgba(160,210,255,0.9)'; ctx.shadowBlur = 10 + 10 * rim;
+      ctx.strokeStyle = `rgba(200,230,255,${rim})`; ctx.lineWidth = 1.4;
       ctx.beginPath(); ctx.roundRect(NOTCH.x - 2, -14, NOTCH.w + 4, NOTCH.h + 16, 14); ctx.stroke();
+      ctx.restore();
     }
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     for (const p of particles) {
