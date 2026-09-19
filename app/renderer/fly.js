@@ -12,26 +12,30 @@
     headHi: '#c4ad86', headLo: '#4a3a24', leg: '#3a2c1c',
   };
 
+  // A Drosophila wing: a long clear oval (about 1.3x the abdomen), five longitudinal veins and two
+  // crossveins, a faint grey-blue tint and a rim highlight. Drawn pointing back (-x) from the hinge.
   function wing(ctx, side, angle, alpha, len, fold) {
     ctx.save();
     ctx.rotate(side * angle);
     ctx.globalAlpha = alpha;
-    const sq = fold ? 0.3 : 1;
-    const g = ctx.createLinearGradient(0, 0, -len, side * len * 0.35);
-    g.addColorStop(0, 'rgba(240,244,255,0.55)');
-    g.addColorStop(0.4, 'rgba(255,215,240,0.30)');
-    g.addColorStop(0.7, 'rgba(195,235,255,0.30)');
-    g.addColorStop(1, 'rgba(240,244,255,0.12)');
-    ctx.fillStyle = g;
+    const wdt = len * (fold ? 0.28 : 0.36);
     ctx.beginPath();
     ctx.moveTo(0, 0);
-    ctx.bezierCurveTo(-len * 0.15, side * len * 0.55 * sq, -len * 0.95, side * len * 0.45 * sq, -len, side * len * 0.12 * sq);
-    ctx.bezierCurveTo(-len * 0.8, -side * len * 0.02, -len * 0.3, -side * len * 0.02, 0, 0);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 0.5;
+    ctx.bezierCurveTo(-len * 0.1, side * wdt * 0.9, -len * 0.75, side * wdt * 1.05, -len, side * wdt * 0.45);
+    ctx.bezierCurveTo(-len * 1.02, side * wdt * 0.1, -len * 0.7, -side * wdt * 0.25, 0, 0);
+    ctx.closePath();
+    const g = ctx.createLinearGradient(0, 0, -len, side * wdt);
+    g.addColorStop(0, 'rgba(225,232,240,0.34)');
+    g.addColorStop(0.5, 'rgba(210,222,238,0.22)');
+    g.addColorStop(1, 'rgba(235,240,248,0.16)');
+    ctx.fillStyle = g; ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.45)'; ctx.lineWidth = 0.35; ctx.stroke();
+    // veins
+    ctx.strokeStyle = 'rgba(70,60,50,0.55)'; ctx.lineWidth = 0.35;
     ctx.beginPath();
-    for (const k of [0.1, 0.24, 0.4]) { ctx.moveTo(0, 0); ctx.lineTo(-len * 0.96, side * len * k * sq); }
-    ctx.moveTo(-len * 0.45, side * len * 0.05 * sq); ctx.lineTo(-len * 0.5, side * len * 0.42 * sq);
+    for (const k of [0.02, 0.16, 0.32, 0.5, 0.72]) { ctx.moveTo(-len * 0.05, side * wdt * k * 0.3); ctx.quadraticCurveTo(-len * 0.5, side * wdt * k, -len * 0.98, side * wdt * (0.15 + k * 0.4)); }
+    ctx.moveTo(-len * 0.35, side * wdt * 0.12); ctx.lineTo(-len * 0.38, side * wdt * 0.5);
+    ctx.moveTo(-len * 0.62, side * wdt * 0.38); ctx.lineTo(-len * 0.66, side * wdt * 0.7);
     ctx.stroke();
     ctx.restore();
   }
@@ -67,9 +71,14 @@
 
     // legs
     ctx.strokeStyle = C.leg; ctx.lineWidth = 0.9; ctx.lineCap = 'round';
-    const tw = f.flying ? 0 : Math.sin(f.legPhase) * 0.12;
+    const tw = f.flying || f.feeding ? 0 : Math.sin(f.legPhase) * 0.12;
     for (const side of [-1, 1]) {
-      if (f.flying) {
+      if (f.feeding) {
+        // gripping the cube: legs splayed wide and still, tarsi planted
+        leg(ctx, 3, side * 3, side, 0.55, 1.35, 7, 7);
+        leg(ctx, -1, side * 3.5, side, 1.35, 1.75, 7, 7);
+        leg(ctx, -4, side * 3.5, side, 2.1, 2.5, 7, 8);
+      } else if (f.flying) {
         leg(ctx, 2, side * 3, side, 2.3, 2.9, 5, 6);
         leg(ctx, -1, side * 3.5, side, 2.6, 3.0, 5, 6);
         leg(ctx, -4, side * 3.5, side, 2.8, 3.1, 5, 7);
@@ -140,16 +149,19 @@
     // wings
     ctx.save(); ctx.translate(-1.5, 0);
     if (f.flying) {
+      // a 200 Hz stroke reads as two ghosts at the stroke extremes plus a faint fan between them
       for (const side of [-1, 1]) {
         const ph = f.wingPhase + (side > 0 ? 0 : 0.3);
-        for (let k = 0; k < 3; k++) {
-          const a = 0.5 + 0.8 * (0.5 + 0.5 * Math.sin(ph + k * 2.1));
-          wing(ctx, side, a, 0.22, 17, false);
-        }
+        ctx.save(); ctx.globalAlpha = 0.07;
+        ctx.fillStyle = 'rgba(220,230,245,1)';
+        ctx.beginPath(); ctx.moveTo(0, 0); ctx.arc(0, 0, 21, Math.PI + side * 0.4, Math.PI + side * 1.35, side < 0); ctx.closePath(); ctx.fill();
+        ctx.restore();
+        wing(ctx, side, 0.4 + 0.08 * Math.sin(ph), 0.35, 21, false);
+        wing(ctx, side, 1.35 + 0.08 * Math.sin(ph + 1), 0.35, 21, false);
       }
     } else {
-      wing(ctx, -1, 0.10, 0.62, 22, true);
-      wing(ctx, 1, 0.10, 0.62, 22, true);
+      wing(ctx, -1, 0.08, 0.75, 25, true);
+      wing(ctx, 1, 0.08, 0.75, 25, true);
     }
     ctx.restore();
 
@@ -172,9 +184,8 @@
     if (amount <= 0) return;
     const k = 0.5 + 0.5 * amount, w = size * k, h = size * k, d = size * 0.45 * k;
     ctx.save(); ctx.translate(x, y);
-    const gl = ctx.createRadialGradient(0, h / 2, 2, 0, h / 2, size * 2.2);
-    gl.addColorStop(0, 'rgba(255,248,230,0.45)'); gl.addColorStop(1, 'rgba(255,248,230,0)');
-    ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(0, h / 2, size * 2.2, 0, TAU); ctx.fill();
+    // a faint contact shadow under the cube, no halo
+    ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.beginPath(); ctx.ellipse(2, h + 2, w * 0.7, 3, 0, 0, TAU); ctx.fill();
     // front
     let g = ctx.createLinearGradient(0, 0, 0, h); g.addColorStop(0, '#fbf7ef'); g.addColorStop(1, '#e2d9c8');
     ctx.fillStyle = g; ctx.fillRect(-w / 2, 0, w, h);
