@@ -7,7 +7,6 @@ const fs = require('fs');
 
 app.dock?.hide();
 
-const W = 1000, H = 300;
 let win, tray, brainProc;
 
 // Notch geometry in points, from NSScreen (cached). Falls back to the 16" M1 Pro layout.
@@ -37,8 +36,10 @@ function startBrain() {
 app.whenReady().then(() => {
   const d = screen.getPrimaryDisplay();
   const notch = notchGeometry();
+  // full display, so the fly owns the whole screen and the break can dim it
+  const W = d.bounds.width, H = d.bounds.height;
   win = new BrowserWindow({
-    x: Math.round(d.bounds.x + notch.x + notch.w / 2 - W / 2), y: d.bounds.y, width: W, height: H,
+    x: d.bounds.x, y: d.bounds.y, width: W, height: H,
     transparent: true, frame: false, enableLargerThanScreen: true, hasShadow: false, resizable: false,
     alwaysOnTop: true, skipTaskbar: true, focusable: false, roundedCorners: false,
     webPreferences: { preload: path.join(__dirname, 'preload.js') },
@@ -46,7 +47,7 @@ app.whenReady().then(() => {
   win.setAlwaysOnTop(true, 'screen-saver', 1);
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   win.setIgnoreMouseEvents(true, { forward: true });
-  win.loadFile('index.html', { query: { notchX: notch.x - (win.getBounds().x - d.bounds.x), notchW: notch.w, notchH: notch.h } });
+  win.loadFile('index.html', { query: { notchX: notch.x, notchW: notch.w, notchH: notch.h, w: W, h: H } });
 
   // Cursor-as-predator: the fly must see the cursor even when it is far from our window.
   setInterval(() => {
@@ -56,8 +57,8 @@ app.whenReady().then(() => {
   }, 16);
 
   const send = (ch, v) => !win.isDestroyed() && win.webContents.send(ch, v);
-  tray = new Tray(nativeImage.createFromDataURL(
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAaklEQVQ4T2NkoBAwUqifYdQABkKBQFQYMDAw/CdVM7oBjOgaSDUEwwBSXYCiHt0FpLoCwwBSXICSDtBdQKorMAIRFxdgaEZ3AbGuwBmIRIdBRPYHSelQWH+hGoBNM1FpAacL0DUT7QJCXgAA5XosEfQb8AoAAAAASUVORK5CYII='));
+  tray = new Tray(nativeImage.createEmpty());
+  tray.setTitle('🪰');
   tray.setToolTip('FlyBreak');
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Start focus (25 min)', click: () => send('cmd', 'focus') },
