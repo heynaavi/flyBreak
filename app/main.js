@@ -28,7 +28,7 @@ function startBrain() {
   const py = path.join(__dirname, '..', 'brain', 'engine', '.venv', 'bin', 'python');
   const srv = path.join(__dirname, '..', 'brain', 'server.py');
   if (!fs.existsSync(py)) { console.log('brain venv missing; run without brain'); return; }
-  brainProc = spawn(py, [srv], { cwd: path.dirname(srv), stdio: ['ignore', 'pipe', 'pipe'] });
+  brainProc = spawn(py, ['-u', srv], { cwd: path.dirname(srv), stdio: ['ignore', 'pipe', 'pipe'] });
   brainProc.stdout.on('data', d => process.stdout.write('[brain] ' + d));
   brainProc.stderr.on('data', d => process.stderr.write('[brain] ' + d));
   brainProc.on('exit', c => console.log('[brain] exited', c));
