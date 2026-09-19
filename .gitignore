@@ -1,5 +1,6 @@
 node_modules/
-brain/engine/data/raw/
+brain/engine/data/
 brain/engine/.venv/
 __pycache__/
 .DS_Store
+app/app.log

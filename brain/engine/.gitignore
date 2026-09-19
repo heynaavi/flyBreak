@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Environments
+.venv/
+venv/
+env/
+.env
+.python-version
+
+# Data — fetched with tools/fetch_upstream.sh, never redistributed (~90 MB)
+data/raw/
+data/ref/
+# Compiled packs — rebuilt with python -m lif.compile_pack, lif.compile_pack_malecns and lif.shuffle_pack
+data/pack/
+
+# Reference engine — cloned and built by tools/setup_flybrain_reference.sh
+work/
+vendor/
+
+# Run outputs
+outputs/
+*.npy
+*.npz
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+*~
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+graphify-out/*
+.claude/*
+CLAUDE.md
