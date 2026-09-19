@@ -186,7 +186,7 @@
     // touch down, fold, extend the proboscis. Real flies feed in bouts: hold still, then take a few steps.
     if (fly.mode !== 'jump' && fly.mode !== 'landing' && onSugar && feedHz >= 25) {
       if (fly.mode !== 'feed') {
-        fly.mode = 'landing'; fly.speed = 0; fly.roll = 0; fly.feedCube = cube;
+        fly.mode = 'landing'; fly.speed = 0; fly.roll = 0; fly.feedCube = cube; fly.z = 78 + 50 * fly.alt;   // start the descent from flight height
         event('LB3 → MN9: proboscis extension, feeding', `${feedHz.toFixed(0)} Hz`);
         const top = 64 * 0.95 * (0.5 + 0.5 * cube.amount);
         if (window.FLY3D) gsap.to(fly, { alt: 0, x: cube.x, y: cube.y + 32, z: top, heading: Math.PI / 2 + (Math.random() - 0.5) * 0.6, duration: 0.75, ease: 'power2.inOut',

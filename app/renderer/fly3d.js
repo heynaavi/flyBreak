@@ -45,17 +45,20 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
   tilt.add(model);
   scene.add(root);
 
+  // blue bottle fly: metallic cobalt/teal cuticle, joints a shade darker, no black stripes
+  const cuticle = (color, extra = {}) => new THREE.MeshPhysicalMaterial({ color, metalness: 0.55, roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.18,
+    sheen: 0.8, sheenColor: 0x7fd3ff, sheenRoughness: 0.4, emissive: 0x03122e, emissiveIntensity: 0.35, side: THREE.FrontSide, ...extra });
   const mats = {
     eye: new THREE.MeshStandardMaterial({ color: 0xff2e1c, emissive: 0xb01e10, emissiveIntensity: 0.9, roughness: 0.35, side: THREE.DoubleSide, depthTest: false }),
-    wing: new THREE.MeshPhysicalMaterial({ color: 0xcfe6ff, roughness: 0.08, transparent: true, opacity: 0.26, side: THREE.DoubleSide, depthWrite: false, clearcoat: 0.8 }),
-    body: new THREE.MeshPhysicalMaterial({ color: 0x10285c, emissive: 0x04142f, emissiveIntensity: 0.5, roughness: 0.32, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.25, sheen: 1, sheenColor: 0x3d8dff, sheenRoughness: 0.5, side: THREE.FrontSide }),
-    thorax: new THREE.MeshPhysicalMaterial({ color: 0x0f2350, emissive: 0x04142f, emissiveIntensity: 0.5, roughness: 0.3, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.2, sheen: 1, sheenColor: 0x4aa3ff, sheenRoughness: 0.45, side: THREE.FrontSide }),
-    head: new THREE.MeshPhysicalMaterial({ color: 0x0f2350, emissive: 0x04142f, emissiveIntensity: 0.4, roughness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.3, sheen: 0.8, sheenColor: 0x4aa3ff, side: THREE.FrontSide }),
-    abdBand: new THREE.MeshPhysicalMaterial({ color: 0x0a0f1c, emissive: 0x02060f, emissiveIntensity: 0.3, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.2, side: THREE.FrontSide }),
-    black: new THREE.MeshPhysicalMaterial({ color: 0x0c1a36, emissive: 0x04102a, emissiveIntensity: 0.5, roughness: 0.35, clearcoat: 0.9, clearcoatRoughness: 0.25, sheen: 1, sheenColor: 0x3d8dff, side: THREE.DoubleSide }),
+    wing: new THREE.MeshPhysicalMaterial({ color: 0xdfeeff, roughness: 0.08, transparent: true, opacity: 0.24, side: THREE.DoubleSide, depthWrite: false, clearcoat: 0.8 }),
+    body: cuticle(0x1f62c8),
+    thorax: cuticle(0x1a55b8),
+    head: cuticle(0x1c4fa8),
+    abdBand: cuticle(0x163f92),
+    black: cuticle(0x123a86, { side: THREE.DoubleSide }),
     brown: new THREE.MeshStandardMaterial({ color: 0x1a2233, roughness: 0.7, side: THREE.FrontSide }),
-    lower: new THREE.MeshPhysicalMaterial({ color: 0x2f62b8, emissive: 0x0a2a66, emissiveIntensity: 0.4, roughness: 0.45, clearcoat: 0.6, sheen: 0.6, sheenColor: 0x6fb8ff, side: THREE.FrontSide }),
-    leg: new THREE.MeshStandardMaterial({ color: 0x1e3a6e, emissive: 0x081c40, emissiveIntensity: 0.4, roughness: 0.5, metalness: 0.1, side: THREE.FrontSide }),
+    lower: cuticle(0x2c7ad8, { metalness: 0.4 }),
+    leg: new THREE.MeshPhysicalMaterial({ color: 0x27334d, roughness: 0.5, metalness: 0.2, clearcoat: 0.5, side: THREE.FrontSide }),
     ocelli: new THREE.MeshPhysicalMaterial({ color: 0x8a2a1a, roughness: 0.2, clearcoat: 1, side: THREE.FrontSide }),
   };
   const matFor = (g) => {
@@ -215,7 +218,10 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
   // state: {x, y, heading, roll, alt, flying, wingPhase, proboscis, scale}
   function render(f, dt = 1 / 60) {
     const sc = (f.scale || 1) / 2.6;
-    root.position.set(f.x, f.y, -((f.z || 0) + 70 * (f.alt || 0)));   // altitude lifts it off the glass (toward the viewer), so the shadow drifts
+    const lift = f.mode === 'landing' || f.mode === 'feed' || f.mode === 'rest' || f.mode === 'emerging' || f.mode === 'homing'
+      ? (f.z || 0) + 40 * (f.alt || 0)
+      : 78 + 50 * (f.alt || 0);                                   // in flight: always above a cube (61 px)
+    root.position.set(f.x, f.y, -lift);                          // toward the viewer is -z; the shadow drifts with height
     key.position.set(f.x - 260, f.y - 420, -760); key.target.position.set(f.x, f.y, 0);
     root.rotation.set(0, 0, f.heading);
     root.scale.setScalar(sc * (1 + 0.22 * (f.alt || 0)));
