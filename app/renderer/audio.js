@@ -20,7 +20,8 @@
     const o1 = ctx.createOscillator(); o1.type = 'triangle'; o1.frequency.value = 98;
     const o2 = ctx.createOscillator(); o2.type = 'sine'; o2.frequency.value = 196; const o2g = ctx.createGain(); o2g.gain.value = 0.3;
     const trem = ctx.createOscillator(); trem.type = 'sine'; trem.frequency.value = 9; const tremG = ctx.createGain(); tremG.gain.value = 0.25;
-    o1.connect(lp); o2.connect(o2g).connect(lp); lp.connect(g).connect(master); trem.connect(tremG).connect(g.gain);
+    const tremStage = ctx.createGain(); tremStage.gain.value = 1;           // 1 +/- 0.25, multiplies the signal
+    o1.connect(lp); o2.connect(o2g).connect(lp); lp.connect(tremStage).connect(g).connect(master); trem.connect(tremG).connect(tremStage.gain);
     o1.start(); o2.start(); trem.start();
     purr = { g, lp, o1, o2, trem };
     // ---- pad: a warm A-major chord of sines with slow individual swells
@@ -69,7 +70,7 @@
     const t = ctx.currentTime;
     const flying = (fly.flying || fly.mode === 'landing') && !fly.hiding && fly.mode !== 'feed' && fly.mode !== 'rest';
     const speed = fly.speed || 0;
-    purr.g.gain.setTargetAtTime(flying ? Math.min(0.035, 0.018 + speed / 12000) : 0, t, flying ? 0.15 : 0.35);
+    purr.g.gain.setTargetAtTime(flying ? Math.min(0.03, 0.014 + speed / 14000) : 0, t, flying ? 0.25 : 0.45);   // smooth in / out, hard zero when perched
     purr.o1.frequency.setTargetAtTime(92 + speed * 0.03, t, 0.2);
     purr.o2.frequency.setTargetAtTime((92 + speed * 0.03) * 2, t, 0.2);
     purr.trem.frequency.setTargetAtTime(7 + speed / 80, t, 0.3);

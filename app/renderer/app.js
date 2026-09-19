@@ -316,14 +316,14 @@
     const s = fly.scale * (1 + 0.22 * fly.alt), k = 0.35 + 0.65 * app.dim;
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
     // floor pool (the neon fly lights the glass under it); the shadow falls inside it
-    const px = fly.x + 16 + 40 * fly.alt, py = fly.y + 26 + 60 * fly.alt, pr = 62 * s;
-    const pool = ctx.createRadialGradient(px, py, 4, px, py, pr);
-    pool.addColorStop(0, `rgba(40,120,255,${0.30 * k})`); pool.addColorStop(0.5, `rgba(60,90,255,${0.10 * k})`); pool.addColorStop(1, 'rgba(60,90,255,0)');
+    const px = fly.x + 16 + 40 * fly.alt, py = fly.y + 26 + 60 * fly.alt, pr = 42 * s;
+    const pool = ctx.createRadialGradient(px, py, 3, px, py, pr);
+    pool.addColorStop(0, `rgba(40,120,255,${0.16 * k})`); pool.addColorStop(0.5, `rgba(60,90,255,${0.05 * k})`); pool.addColorStop(1, 'rgba(60,90,255,0)');
     ctx.fillStyle = pool; ctx.beginPath(); ctx.arc(px, py, pr, 0, TAU); ctx.fill();
     // body halo: cyan core with a magenta fringe
-    const hr = 26 * s;
-    const halo = ctx.createRadialGradient(fly.x, fly.y, 2, fly.x, fly.y, hr);
-    halo.addColorStop(0, `rgba(120,240,255,${0.55 * k})`); halo.addColorStop(0.45, `rgba(60,140,255,${0.28 * k})`); halo.addColorStop(0.8, `rgba(200,80,255,${0.10 * k})`); halo.addColorStop(1, 'rgba(200,80,255,0)');
+    const hr = 13 * s;   // tight: hugs the body, no big disc
+    const halo = ctx.createRadialGradient(fly.x, fly.y, 1, fly.x, fly.y, hr);
+    halo.addColorStop(0, `rgba(120,240,255,${0.22 * k})`); halo.addColorStop(0.5, `rgba(60,140,255,${0.10 * k})`); halo.addColorStop(1, 'rgba(120,200,255,0)');
     ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(fly.x, fly.y, hr, 0, TAU); ctx.fill();
     ctx.restore();
   }
