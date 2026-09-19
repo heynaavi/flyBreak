@@ -2,6 +2,7 @@
 > flybreak@0.1.0 start
 > electron .
 
+sandbox_extension_issue_file failed for /Users/navi/Dev/2026/ClaudeCommunityHackathon/app/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Resources: 1 (Operation not permitted)
 [brain] loading MaleCNS v1.0 pack ...
 [brain] 166,700 neurons, 24,469,412 synapses
 [brain]   sugar       77 neurons

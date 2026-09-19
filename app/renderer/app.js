@@ -20,7 +20,7 @@
   const cursor = { x: -999, y: -999, vx: 0, vy: 0, t: 0 };
   const sugar = { cubes: [], x: NOTCH.cx, y: NOTCH.h + 4, target: null };   // cubes: {x, y, amount}
   const fly = {
-    x: NOTCH.x + NOTCH.w + 90, y: NOTCH.h - 2, heading: -0.25, targetHeading: -0.25, speed: 0, alt: 0, roll: 0,
+    x: NOTCH.cx, y: NOTCH.h - 22, heading: Math.PI / 2, targetHeading: Math.PI / 2, speed: 0, alt: 0, roll: 0,
     flying: false, wingPhase: 0, legPhase: 0, proboscis: 0, scale: BASE_SCALE, groom: 0,
     mode: 'rest', cooldown: 0, saccadeIn: 0.3, burst: 0, satiated: 0, noticed: false,
   };
@@ -28,6 +28,7 @@
   const brain = { online: false, speed: 0, active: 0, simMs: 0, ws: null, lastMsg: 0 };
   const app = { phase: 'rest', timer: 0, fed: 0, msg: '', msgAlpha: 0, flash: 0, events: [], dim: 0, pulse: 0 };
   const senses = { sugar: 0, looming: 0 };
+  const dust = Array.from({ length: 70 }, () => ({ x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - 0.5) * 0.25, vy: -0.05 - Math.random() * 0.12, r: 0.6 + Math.random() * 1.4, s: 0.3 + Math.random() * 0.7, o: Math.random() * TAU }));
   const particles = Array.from({ length: 60 }, (_, i) => ({
     a: (i / 60) * TAU, r: 40 + Math.random() * 60, s: 0.4 + Math.random() * 0.8, o: Math.random() * TAU, sz: 0.7 + Math.random() * 1.4,
   }));
@@ -54,33 +55,48 @@
   }
 
   function command(cmd) {
-    if (cmd === 'focus') { app.phase = 'focus'; app.timer = 25 * 60; clearSugar(); land(); gsap.to(app, { dim: 0, duration: 1 }); say('Focus. Your fly sleeps on the notch.'); }
+    if (cmd === 'focus') { app.phase = 'focus'; app.timer = 25 * 60; clearSugar(); goHome(); gsap.to(app, { dim: 0, duration: 1 }); say('Focus. Your fly sleeps in the notch.'); }
     if (cmd === 'break') startBreak(60);
     if (cmd === 'free') startBreak(1e9);
-    if (cmd === 'rest') { app.phase = 'rest'; clearSugar(); land(); gsap.to(app, { dim: 0, duration: 1 }); say('Resting.'); }
+    if (cmd === 'rest') { app.phase = 'rest'; clearSugar(); goHome(); gsap.to(app, { dim: 0, duration: 1 }); say('Resting.'); }
     if (cmd === 'resetBrain') brain.ws?.send(JSON.stringify({ reset: true }));
   }
 
-  // The ritual: dim the screen, the fly wakes and grooms, the notch pulses, cubes arrive one by one,
-  // the fly notices, then flies over. (Real flies groom with their front legs for seconds at a time.)
+  // The ritual: the fly lives inside the notch. The stage dims, the fly emerges from the notch and flies
+  // off, the notch rim lights, the cubes arrive one by one, the fly notices and comes back for them.
+  const HOME = () => ({ x: NOTCH.cx, y: NOTCH.h - 22, h: Math.PI / 2 });   // inside the cutout: invisible
   function startBreak(secs) {
-    app.phase = secs > 1e8 ? 'free' : 'break'; app.timer = secs; app.fed = 0; fly.noticed = false;
-    if (!fly.flying) land();
-    gsap.to(app, { dim: 0.62, duration: 1.6, ease: 'power2.inOut' });
-    gsap.to(fly, { groom: 1, duration: 0.8, delay: 0.6 });
+    app.phase = secs > 1e8 ? 'free' : 'break'; app.timer = secs; app.fed = 0; fly.noticed = false; fly.hiding = false;
+    gsap.killTweensOf(fly, 'x,y,z,heading,alt');
+    gsap.to(app, { dim: 0.92, duration: 1.4, ease: 'power2.inOut' });
     say(secs > 1e8 ? 'Free flight. Your cursor is the predator.' : 'FlyBreak. Your cursor is the predator.');
-    const tl = gsap.timeline({ delay: 2.2 });
-    tl.to(app, { pulse: 1, duration: 0.6, ease: 'sine.out' }).to(app, { pulse: 0.35, duration: 0.8 });
-    for (let i = 0; i < 3; i++) tl.call(dropCube, [i], 1.2 + i * 0.7);
-    tl.call(() => { fly.noticed = true; gsap.to(fly, { groom: 0, duration: 0.5 }); event('sugar in view', 'orienting'); }, [], 4.2);
-    tl.call(() => { if (!fly.flying) takeOff(); }, [], 5.0);
+    const tl = gsap.timeline({ delay: 0.9 });
+    // emerge: slide out of the notch's mouth, wings already going, then peel away downward
+    tl.call(() => {
+      Object.assign(fly, HOME()); fly.heading = Math.PI / 2; fly.flying = true; fly.mode = 'emerging'; fly.speed = 60; fly.alt = 0.2; fly.z = 0;
+      window.FlyAudio?.whoosh(true); app.flash = 0.6;
+      gsap.to(fly, { y: NOTCH.h + 46, alt: 0.6, duration: 0.7, ease: 'power2.out' });
+    });
+    tl.call(() => { fly.mode = 'fly'; fly.targetHeading = Math.PI / 2 + (Math.random() - 0.5) * 1.4; fly.speed = 220; fly.saccadeIn = 0.5; fly.satiated = 4; }, [], 0.75);
+    tl.to(app, { pulse: 1, duration: 0.5, ease: 'sine.out' }, 2.0).to(app, { pulse: 0.35, duration: 0.8 });
+    for (let i = 0; i < 3; i++) tl.call(dropCube, [i], 2.6 + i * 0.6);
+    tl.call(() => { fly.noticed = true; fly.satiated = 0; event('sugar in view', 'orienting'); }, [], 4.6);
+  }
+  // back into the notch: fly to the mouth, slip inside, go dark
+  function goHome(then) {
+    const h = HOME();
+    gsap.killTweensOf(fly, 'x,y,z,heading,alt');
+    fly.mode = 'homing'; fly.flying = true; fly.z = 0; fly.hiding = false;
+    gsap.to(fly, { x: h.x, y: NOTCH.h + 40, heading: -Math.PI / 2, alt: 0.4, duration: 0.9, ease: 'power2.inOut',
+      onComplete: () => { window.FlyAudio?.whoosh(false); gsap.to(fly, { y: h.y, alt: 0.1, duration: 0.55, ease: 'power2.in',
+        onComplete: () => { land(h); fly.hiding = true; then && then(); } }); } });
   }
   function dropCube(i) {
     // cubes settle in the notch's mouth: their top faces overlap the cutout and get clipped by it
     const c = { x: NOTCH.cx + (i - 1) * 80, y: NOTCH.h - 30, amount: 0, land: NOTCH.h + 14 };
     sugar.cubes.push(c);
     gsap.to(c, { amount: 1, duration: 0.35 });
-    gsap.to(c, { y: c.land, duration: 0.7, ease: 'bounce.out' });
+    gsap.to(c, { y: c.land, duration: 0.7, ease: 'bounce.out', onComplete: () => window.FlyAudio?.chime(i) });
     app.flash = Math.max(app.flash, 0.5);
   }
   function respawnCube() {
@@ -97,7 +113,7 @@
 
   function land(spot) {
     fly.flying = false; fly.mode = 'rest'; fly.speed = 0; fly.alt = 0; fly.proboscis = 0; fly.roll = 0; fly.z = 0;
-    const p = spot || { x: NOTCH.x + NOTCH.w + 150 + Math.random() * 60, y: NOTCH.h - 2, h: -0.25 };
+    const p = spot || HOME();
     gsap.to(fly, { x: p.x, y: p.y, heading: p.h, duration: 0.6, ease: 'power2.out' });
   }
   function takeOff() {
@@ -154,16 +170,16 @@
 
     if (app.phase === 'break') {
       app.timer -= dt;
-      if (app.timer <= 0) { app.phase = 'rest'; clearSugar(); land(); gsap.to(app, { dim: 0, duration: 1.5 }); say(app.fed > 0 ? `Break done. Fly fed ${app.fed}×.` : 'Break done.'); }
+      if (app.timer <= 0) { app.phase = 'rest'; clearSugar(); goHome(() => gsap.to(app, { dim: 0, duration: 1.5 })); say(app.fed > 0 ? `Break done. Fly fed ${app.fed}×.` : 'Break done.'); }
     }
     if (app.phase === 'focus') { app.timer -= dt; if (app.timer <= 0) startBreak(60); }
 
     // ESCAPE: giant fiber -> saccade away from the threat with a speed burst
-    if (escapeHz >= 60 && fly.cooldown <= 0) {
+    if (escapeHz >= 60 && fly.cooldown <= 0 && fly.mode !== 'rest' && fly.mode !== 'emerging' && fly.mode !== 'homing') {
       const away = Math.atan2(fly.y - cursor.y, fly.x - cursor.x) + (Math.random() - 0.5) * 0.9;
       if (!fly.flying) takeOff();
       gsap.killTweensOf(fly, 'x,y,z,heading'); fly.mode = 'jump'; fly.flying = true; fly.feeding = false; fly.z = 0; fly.targetHeading = away; fly.heading = away; fly.burst = 0.22; fly.cooldown = 0.55; fly.proboscis = 0;
-      app.flash = 1; event('LPLC2/LC4 → DNp01 giant fiber: ESCAPE', `${escapeHz.toFixed(0)} Hz`);
+      app.flash = 1; window.FlyAudio?.escape(); event('LPLC2/LC4 → DNp01 giant fiber: ESCAPE', `${escapeHz.toFixed(0)} Hz`);
       gsap.to(fly, { alt: 0.95, duration: 0.15, yoyo: true, repeat: 1 });
     }
     // FEED: MN9 fires while the labellum touches sugar -> glide down onto the cube (wings still beating),
@@ -191,9 +207,9 @@
       }
       const want = fly.stepping ? 0 : 1;
       fly.proboscis += (want - fly.proboscis) * Math.min(1, dt * 6);
-      if (fly.proboscis > 0.5) c.amount -= dt * 0.07;
+      if (fly.proboscis > 0.5) { c.amount -= dt * 0.07; fly.sipIn = (fly.sipIn || 0) - dt; if (fly.sipIn <= 0) { fly.sipIn = 0.5 + Math.random() * 0.6; window.FlyAudio?.sip(); } }
       if (c.amount <= 0.08) {
-        c.amount = 0; app.fed++; fly.satiated = 8; say(`Fed ${app.fed}×. Full for a moment.`);
+        c.amount = 0; app.fed++; fly.satiated = 8; say(`Fed ${app.fed}×. Full for a moment.`); window.FlyAudio?.reward();
         fly.mode = 'fly'; fly.flying = true; fly.proboscis = 0; fly.z = 0; fly.feeding = false; fly.targetHeading = Math.PI / 2 + (Math.random() - 0.5); fly.speed = 200;
         gsap.to(fly, { alt: 0.7, duration: 0.4 });
         setTimeout(() => { sugar.cubes.splice(sugar.cubes.indexOf(c), 1); respawnCube(); }, 3000);
@@ -211,7 +227,7 @@
       return;
     }
     if (fly.mode === 'feed') return;
-    if (fly.mode === 'landing') { fly.wingPhase += dt * 200 * TAU * 0.05; return; }
+    if (fly.mode === 'landing' || fly.mode === 'emerging' || fly.mode === 'homing') { fly.wingPhase += dt * 200 * TAU * 0.05; return; }
 
     // FLIGHT: straight runs and body saccades (~90° in ~70 ms), banking into the turn.
     fly.wingPhase += dt * 200 * TAU * 0.05;
@@ -259,7 +275,19 @@
   }
   function drawLight(t) {
     // the break dims the desktop so the fly and the sugar carry the light
-    if (app.dim > 0.005) { ctx.fillStyle = `rgba(4,6,12,${app.dim})`; ctx.fillRect(0, 0, W, H); }
+    if (app.dim > 0.005) {
+      ctx.fillStyle = `rgba(4,6,12,${app.dim})`; ctx.fillRect(0, 0, W, H);
+      // vignette: the edges fall off a little further, the middle stays a stage
+      const v = ctx.createRadialGradient(W / 2, H * 0.35, H * 0.25, W / 2, H * 0.45, H * 0.95);
+      v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, `rgba(0,0,0,${0.55 * app.dim})`);
+      ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
+      // dust: slow motes drifting across the dark, a few catching the light
+      for (const d of dust) {
+        d.x += d.vx * (1 + 0.2 * Math.sin(t * d.s)); d.y += d.vy; if (d.x < -10) d.x = W + 10; if (d.x > W + 10) d.x = -10; if (d.y < -10) d.y = H + 10; if (d.y > H + 10) d.y = -10;
+        const al = (0.10 + 0.14 * (0.5 + 0.5 * Math.sin(t * d.s * 2 + d.o))) * app.dim;
+        ctx.fillStyle = `rgba(200,220,255,${al})`; ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, TAU); ctx.fill();
+      }
+    }
     const act = clamp(brain.active / 4000, 0, 1);
     // the notch rim: a thin lit outline that "opens" for the sugar and flashes when the giant fiber fires
     const rim = clamp(0.5 * app.pulse + 0.6 * app.flash, 0, 1);
@@ -311,6 +339,7 @@
     ctx.clearRect(0, 0, W, H);
     if (!inElectron) drawNotchStandIn();
     const cube = encodeSenses(dt);
+    window.FlyAudio?.update(fly, app.phase, dt);
     body(dt, cube);
     drawLight(t);
     if (window.FLY3D) window.FLY3D.setCubes(sugar.cubes, 64); else for (const c of sugar.cubes) drawSugar(ctx, c.x, c.y, c.amount, t, 24);

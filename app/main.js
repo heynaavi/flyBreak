@@ -6,6 +6,7 @@ const path = require('path');
 const fs = require('fs');
 
 app.dock?.hide();
+app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 let win, tray, brainProc;
 
