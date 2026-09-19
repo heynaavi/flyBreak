@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "flybreak-preview",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": ["-c", "cd app && python3 -m http.server 8099"],
+      "port": 8099
+    }
+  ]
+}

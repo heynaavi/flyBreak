@@ -1,0 +1,5 @@
+node_modules/
+brain/engine/data/raw/
+brain/engine/.venv/
+__pycache__/
+.DS_Store
