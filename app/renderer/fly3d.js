@@ -167,15 +167,17 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
   // wing wash: a faint trail of air-borne motes shed from the wing hinges while flying; spread and
   // speed scale with airspeed, and each mote fades (additive blend, colour -> black) over ~0.5 s
   const N_P = 480;
-  const pPos = new Float32Array(N_P * 3), pCol = new Float32Array(N_P * 3), pVel = new Float32Array(N_P * 3), pLife = new Float32Array(N_P);
+  const pPos = new Float32Array(N_P * 3), pCol = new Float32Array(N_P * 3), pVel = new Float32Array(N_P * 3), pLife = new Float32Array(N_P), pMax = new Float32Array(N_P), pBright = new Float32Array(N_P);
   const pGeo = new THREE.BufferGeometry();
   pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3)); pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
-  const points = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 3, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: false }));
+  const points = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 2.2, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: false }));
   points.frustumCulled = false; scene.add(points);
   let pNext = 0;
   const _hinge = new THREE.Vector3();
   function emit(f, dt) {
-    const speed = f.speed || 150, n = f.flying ? Math.min(16, 3 + speed / 40) : 0;
+    const speed = f.speed || 150;
+    // sparse: about 1-3 motes a frame, more when fast; each with its own life span and brightness
+    const n = f.flying ? (Math.random() < 0.4 + speed / 900 ? 1 : 0) + (speed > 300 && Math.random() < 0.5 ? 1 : 0) : 0;
     for (let k = 0; k < n; k++) {
       const i = pNext++ % N_P, side = k % 2 ? 'wingL' : 'wingR';
       parts[side].getWorldPosition(_hinge);
@@ -183,14 +185,15 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
       const v = 40 + speed * 0.45 + Math.random() * 40;
       pPos[i * 3] = _hinge.x + (Math.random() - 0.5) * 6; pPos[i * 3 + 1] = _hinge.y + (Math.random() - 0.5) * 6; pPos[i * 3 + 2] = _hinge.z - 8;
       pVel[i * 3] = Math.cos(back) * v; pVel[i * 3 + 1] = Math.sin(back) * v; pVel[i * 3 + 2] = (Math.random() - 0.5) * 20;
-      pLife[i] = 0.6 + Math.random() * 0.5;
+      pMax[i] = pLife[i] = 0.4 + Math.random() * 1.1; pBright[i] = 0.35 + Math.random() * 0.65;
     }
     for (let i = 0; i < N_P; i++) {
       if (pLife[i] <= 0) { pCol[i * 3] = pCol[i * 3 + 1] = pCol[i * 3 + 2] = 0; continue; }
       pLife[i] -= dt;
       pPos[i * 3] += pVel[i * 3] * dt; pPos[i * 3 + 1] += pVel[i * 3 + 1] * dt; pPos[i * 3 + 2] += pVel[i * 3 + 2] * dt;
-      pVel[i * 3] *= 0.985; pVel[i * 3 + 1] *= 0.985;
-      const a = Math.max(0, Math.min(1, pLife[i] / 0.6)) * 0.55;
+      pVel[i * 3] *= 0.975; pVel[i * 3 + 1] *= 0.975; pVel[i * 3 + 1] += 6 * dt;   // drag, and a slow settle
+      const t = Math.max(0, Math.min(1, pLife[i] / pMax[i]));
+      const a = t * t * (3 - 2 * t) * pBright[i] * 0.5;   // smooth fade-out to fully transparent (additive: black = invisible)
       pCol[i * 3] = 0.35 * a; pCol[i * 3 + 1] = 0.6 * a; pCol[i * 3 + 2] = 1.0 * a;
     }
     pGeo.attributes.position.needsUpdate = true; pGeo.attributes.color.needsUpdate = true;
