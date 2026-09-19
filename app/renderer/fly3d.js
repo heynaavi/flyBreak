@@ -10,7 +10,7 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
   renderer.setSize(W, H, false);
   renderer.setClearColor(0x000000, 0);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.7;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.5;
 
   const scene = new THREE.Scene();
   // screen space: x right, y down, z toward the viewer
@@ -30,7 +30,7 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
 
   // root (position on screen, heading, roll) -> tilt (a little perspective) -> model (MuJoCo x fwd, y left, z up)
   const root = new THREE.Group();
-  const tilt = new THREE.Group(); tilt.rotation.x = -0.55; root.add(tilt);
+  const tilt = new THREE.Group(); tilt.rotation.x = -0.22; root.add(tilt);
   const model = new THREE.Group();
   // MuJoCo -> screen: x -> x, y(left) -> -y (screen up), z(up) -> +z (toward viewer)
   model.scale.set(unit, -unit, unit);
@@ -39,13 +39,16 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
   scene.add(root);
 
   const mats = {
-    eye: new THREE.MeshPhysicalMaterial({ color: 0xc2281f, roughness: 0.25, metalness: 0.0, clearcoat: 1, clearcoatRoughness: 0.15, side: THREE.DoubleSide }),
-    wing: new THREE.MeshPhysicalMaterial({ color: 0xdfe8f5, roughness: 0.15, metalness: 0.0, transparent: true, opacity: 0.32, transmission: 0.2, side: THREE.DoubleSide, depthWrite: false, iridescence: 0.6, iridescenceIOR: 1.3 }),
-    body: new THREE.MeshStandardMaterial({ color: 0xa8895e, roughness: 0.5, metalness: 0.05, side: THREE.DoubleSide }),
+    eye: new THREE.MeshStandardMaterial({ color: 0xd42a1e, emissive: 0x9a1c12, emissiveIntensity: 0.9, roughness: 0.35, side: THREE.DoubleSide, depthTest: false }),  // eye normals face inward; emissive keeps them red
+    wing: new THREE.MeshPhysicalMaterial({ color: 0xf2f6ff, roughness: 0.1, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false }),
+    body: new THREE.MeshPhysicalMaterial({ color: 0xb08f5e, roughness: 0.42, metalness: 0.05, clearcoat: 0.35, clearcoatRoughness: 0.5, side: THREE.DoubleSide }),
+    thorax: new THREE.MeshPhysicalMaterial({ color: 0x9c8058, roughness: 0.45, clearcoat: 0.4, clearcoatRoughness: 0.4, side: THREE.DoubleSide }),
+    abdBand: new THREE.MeshPhysicalMaterial({ color: 0x2a1c10, roughness: 0.45, clearcoat: 0.5, clearcoatRoughness: 0.3, side: THREE.DoubleSide }),
     black: new THREE.MeshStandardMaterial({ color: 0x1c140c, roughness: 0.6, side: THREE.DoubleSide }),
     brown: new THREE.MeshStandardMaterial({ color: 0x4a3620, roughness: 0.7, side: THREE.DoubleSide }),
-    lower: new THREE.MeshStandardMaterial({ color: 0xb59a6a, roughness: 0.6, side: THREE.DoubleSide }),
-    ocelli: new THREE.MeshPhysicalMaterial({ color: 0x7a2a1a, roughness: 0.2, clearcoat: 1, side: THREE.DoubleSide }),
+    lower: new THREE.MeshStandardMaterial({ color: 0xcdb58a, roughness: 0.55, side: THREE.DoubleSide }),
+    leg: new THREE.MeshStandardMaterial({ color: 0x8a6d45, roughness: 0.6, side: THREE.DoubleSide }),
+    ocelli: new THREE.MeshPhysicalMaterial({ color: 0x8a2a1a, roughness: 0.2, clearcoat: 1, side: THREE.DoubleSide }),
   };
   const matFor = (g) => {
     const n = g.mesh.toLowerCase();
@@ -54,10 +57,14 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
     if (n.includes('wing')) return mats.wing;
     if (n.includes('black')) return mats.black;
     if (n.includes('brown') || n.includes('bristle')) return mats.brown;
+    // abdomen: tan tergites with the posterior segments black (male Drosophila), pale ventral sternites
+    const ab = n.match(/^abdomen_(\d)/);
+    if (ab) { const i = +ab[1]; if (n.includes('lower')) return mats.lower; return (i >= 5 || i === 2) ? mats.abdBand : mats.body; }
     if (n.includes('lower')) return mats.lower;
+    if (n.startsWith('thorax')) return mats.thorax;
+    if (/coxa|femur|tibia|tarsus/.test(n)) return mats.leg;
     return mats.body;
   };
-
   // articulated parts: each wing pivots about its hinge joint; the proboscis chain translates
   const parts = { wingL: new THREE.Group(), wingR: new THREE.Group(), proboscis: new THREE.Group(), rest: new THREE.Group() };
   for (const p of Object.values(parts)) model.add(p);
@@ -83,7 +90,7 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
     }
     if (!gltf) { console.warn('missing', glb); return; }
     const mesh = gltf.scene;
-    mesh.traverse(o => { if (o.isMesh) { o.material = matFor(g); o.frustumCulled = false; } });
+    mesh.traverse(o => { if (o.isMesh) { o.material = matFor(g); o.frustumCulled = false; if (o.material === mats.eye) o.renderOrder = 10; } });
     const m = new THREE.Matrix4().set(
       g.mat[0], g.mat[1], g.mat[2], g.pos[0],
       g.mat[3], g.mat[4], g.mat[5], g.pos[1],
@@ -93,8 +100,7 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
     // geom frame applies: centered = R^T (scale * raw - mesh_pos). Undo that for the raw OBJ vertices.
     const ms = g.scale || [1, 1, 1], mp = g.mesh_pos || [0, 0, 0], mq = g.mesh_quat || [1, 0, 0, 0];
     const R = new THREE.Matrix4().makeRotationFromQuaternion(new THREE.Quaternion(mq[1], mq[2], mq[3], mq[0]));
-    if (matFor(g) === mats.eye) m.multiply(new THREE.Matrix4().makeScale(1.16, 1.16, 1.16));  // decimation shrank the faceted eyes
-    m.multiply(ROT_INV ? R.clone().transpose() : R)
+        m.multiply(ROT_INV ? R.clone().transpose() : R)
      .multiply(new THREE.Matrix4().makeTranslation(-mp[0], -mp[1], -mp[2]))
      .multiply(new THREE.Matrix4().makeScale(ms[0], ms[1], ms[2]));
     mesh.matrixAutoUpdate = false;
@@ -129,7 +135,7 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
     root.position.set(f.x, f.y, 0);
     root.rotation.set(0, 0, f.heading);
     root.scale.setScalar(sc * (1 + 0.22 * (f.alt || 0)));
-    tilt.rotation.y = 0.6 * (f.roll || 0);
+    tilt.rotation.y = 0.35 * (f.roll || 0);
     for (const key of ['wingL', 'wingR']) {
       const w = parts[key], ax = w.userData.axis; if (!ax) continue;
       const side = key === 'wingL' ? 1 : -1;
