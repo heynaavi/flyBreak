@@ -139,13 +139,14 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
   const restQuat = { wingL: parts.wingL.quaternion.clone(), wingR: parts.wingR.quaternion.clone() };
   // rest pose: each wing lies flat along the back. Find the wing tip (farthest point from the hinge, in
   // hinge-local coordinates) and rotate that direction onto "backward, slightly inward, slightly down".
-  const foldQuat = {};
+  const foldQuat = {}, wingTip = {};
   for (const key of ['wingL', 'wingR']) {
     const g = parts[key]; const side = key === 'wingL' ? 1 : -1;
     let tip = new THREE.Vector3(), best = 0;
     g.updateMatrixWorld(true);
     g.traverse(o => { if (!o.isMesh) return; const pos = o.geometry.attributes.position; const v = new THREE.Vector3();
       for (let i = 0; i < pos.count; i += 7) { v.fromBufferAttribute(pos, i).applyMatrix4(o.matrixWorld); g.worldToLocal(v); const d = v.lengthSq(); if (d > best) { best = d; tip.copy(v); } } });
+    wingTip[key] = tip.clone();
     const target = new THREE.Vector3(-1, side * 0.035, side > 0 ? -0.10 : -0.15).normalize();   // both lie along the back, one stacked on the other
     foldQuat[key] = new THREE.Quaternion().setFromUnitVectors(tip.clone().normalize(), target);
   }
@@ -164,39 +165,51 @@ export async function createFly3D({ canvas, W, H, assets = 'assets/fly3d', bodyL
     if (!ok[bad] && ok[good]) { const q = foldQuat[good]; foldQuat[bad] = new THREE.Quaternion(-q.x, q.y, -q.z, q.w); }
   }
   console.log('wing folds ok', ok);
-  // wing wash: a faint trail of air-borne motes shed from the wing hinges while flying; spread and
-  // speed scale with airspeed, and each mote fades (additive blend, colour -> black) over ~0.5 s
-  const N_P = 480;
-  const pPos = new Float32Array(N_P * 3), pCol = new Float32Array(N_P * 3), pVel = new Float32Array(N_P * 3), pLife = new Float32Array(N_P), pMax = new Float32Array(N_P), pBright = new Float32Array(N_P);
+  // wing wash: a few motes of disturbed air shed from the outer half of each wing while flying.
+  // Soft translucent sprites with a true alpha fade (additive blending would write alpha=1 and show
+  // as black over the desktop). Sparse: roughly one mote every few frames, more when fast.
+  const N_P = 240;
+  const pPos = new Float32Array(N_P * 3), pAlpha = new Float32Array(N_P), pSize = new Float32Array(N_P);
+  const pVel = new Float32Array(N_P * 3), pLife = new Float32Array(N_P), pMax = new Float32Array(N_P), pBright = new Float32Array(N_P);
   const pGeo = new THREE.BufferGeometry();
-  pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3)); pGeo.setAttribute('color', new THREE.BufferAttribute(pCol, 3));
-  const points = new THREE.Points(pGeo, new THREE.PointsMaterial({ size: 2.2, vertexColors: true, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, sizeAttenuation: false }));
-  points.frustumCulled = false; scene.add(points);
+  pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+  pGeo.setAttribute('aAlpha', new THREE.BufferAttribute(pAlpha, 1));
+  pGeo.setAttribute('aSize', new THREE.BufferAttribute(pSize, 1));
+  const pMat = new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, depthTest: true, blending: THREE.NormalBlending,
+    uniforms: { uDpr: { value: Math.min(2, devicePixelRatio || 1) } },
+    vertexShader: `attribute float aAlpha; attribute float aSize; varying float vA; uniform float uDpr;
+      void main() { vA = aAlpha; vec4 mv = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mv; gl_PointSize = aSize * uDpr; }`,
+    fragmentShader: `varying float vA; uniform float uDpr;
+      void main() { vec2 d = gl_PointCoord - 0.5; float r = length(d) * 2.0; if (r > 1.0) discard;
+        float soft = smoothstep(1.0, 0.15, r); gl_FragColor = vec4(0.78, 0.88, 1.0, vA * soft); }`,
+  });
+  const points = new THREE.Points(pGeo, pMat); points.frustumCulled = false; scene.add(points);
   let pNext = 0;
-  const _hinge = new THREE.Vector3();
+  const _a = new THREE.Vector3(), _b = new THREE.Vector3(), _p = new THREE.Vector3();
   function emit(f, dt) {
     const speed = f.speed || 150;
-    // sparse: about 1-3 motes a frame, more when fast; each with its own life span and brightness
-    const n = f.flying ? (Math.random() < 0.4 + speed / 900 ? 1 : 0) + (speed > 300 && Math.random() < 0.5 ? 1 : 0) : 0;
-    for (let k = 0; k < n; k++) {
-      const i = pNext++ % N_P, side = k % 2 ? 'wingL' : 'wingR';
-      parts[side].getWorldPosition(_hinge);
-      const back = f.heading + Math.PI + (Math.random() - 0.5) * (0.5 + speed / 600);
-      const v = 40 + speed * 0.45 + Math.random() * 40;
-      pPos[i * 3] = _hinge.x + (Math.random() - 0.5) * 6; pPos[i * 3 + 1] = _hinge.y + (Math.random() - 0.5) * 6; pPos[i * 3 + 2] = _hinge.z - 8;
-      pVel[i * 3] = Math.cos(back) * v; pVel[i * 3 + 1] = Math.sin(back) * v; pVel[i * 3 + 2] = (Math.random() - 0.5) * 20;
-      pMax[i] = pLife[i] = 0.4 + Math.random() * 1.1; pBright[i] = 0.35 + Math.random() * 0.65;
+    const chance = f.flying ? (0.10 + speed / 1500) : 0;          // ~1 mote every 5-8 frames, more when fast
+    if (Math.random() < chance) {
+      const i = pNext++ % N_P, key = Math.random() < 0.5 ? 'wingL' : 'wingR', g = parts[key];
+      g.getWorldPosition(_a); g.localToWorld(_b.copy(wingTip[key]));
+      _p.lerpVectors(_a, _b, 0.45 + Math.random() * 0.55);         // somewhere on the outer half of the wing
+      const back = f.heading + Math.PI + (Math.random() - 0.5) * 1.1, v = 25 + speed * 0.25 + Math.random() * 30;
+      pPos[i * 3] = _p.x; pPos[i * 3 + 1] = _p.y; pPos[i * 3 + 2] = _p.z - 4;
+      pVel[i * 3] = Math.cos(back) * v; pVel[i * 3 + 1] = Math.sin(back) * v; pVel[i * 3 + 2] = -(4 + Math.random() * 10);
+      pMax[i] = pLife[i] = 0.5 + Math.random() * 1.2; pBright[i] = 0.35 + Math.random() * 0.5; pSize[i] = 4 + Math.random() * 6;
     }
     for (let i = 0; i < N_P; i++) {
-      if (pLife[i] <= 0) { pCol[i * 3] = pCol[i * 3 + 1] = pCol[i * 3 + 2] = 0; continue; }
+      if (pLife[i] <= 0) { pAlpha[i] = 0; continue; }
       pLife[i] -= dt;
       pPos[i * 3] += pVel[i * 3] * dt; pPos[i * 3 + 1] += pVel[i * 3 + 1] * dt; pPos[i * 3 + 2] += pVel[i * 3 + 2] * dt;
-      pVel[i * 3] *= 0.975; pVel[i * 3 + 1] *= 0.975; pVel[i * 3 + 1] += 6 * dt;   // drag, and a slow settle
+      pVel[i * 3] *= 0.97; pVel[i * 3 + 1] *= 0.97; pVel[i * 3 + 1] += 5 * dt;
+      pVel[i * 3] += (Math.random() - 0.5) * 30 * dt; pVel[i * 3 + 1] += (Math.random() - 0.5) * 30 * dt;   // a little turbulence
       const t = Math.max(0, Math.min(1, pLife[i] / pMax[i]));
-      const a = t * t * (3 - 2 * t) * pBright[i] * 0.5;   // smooth fade-out to fully transparent (additive: black = invisible)
-      pCol[i * 3] = 0.35 * a; pCol[i * 3 + 1] = 0.6 * a; pCol[i * 3 + 2] = 1.0 * a;
+      const rise = Math.min(1, (pMax[i] - pLife[i]) / 0.12);                                   // quick fade-in
+      pAlpha[i] = t * t * (3 - 2 * t) * rise * pBright[i];
     }
-    pGeo.attributes.position.needsUpdate = true; pGeo.attributes.color.needsUpdate = true;
+    pGeo.attributes.position.needsUpdate = true; pGeo.attributes.aAlpha.needsUpdate = true; pGeo.attributes.aSize.needsUpdate = true;
   }
   const REST_FOLD = +(new URLSearchParams(location.search).get('fold') || -1.25);
   // state: {x, y, heading, roll, alt, flying, wingPhase, proboscis, scale}
