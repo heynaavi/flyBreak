@@ -1,0 +1,19 @@
+
+> flybreak@0.1.0 start
+> electron .
+
+[brain] loading MaleCNS v1.0 pack ...
+[brain] 166,700 neurons, 24,469,412 synapses
+[brain]   sugar       77 neurons
+  bitter      57 neurons
+  looming    311 neurons
+  wind       334 neurons
+  escape       2 neurons
+  feed         2 neurons
+  backward     4 neurons
+  groom        4 neurons
+  forward      6 neurons
+  turnL        2 neurons
+  turnR        2 neurons
+[brain] brain live on ws://127.0.0.1:8765
+sandbox_extension_issue_file failed for /Users/navi/Dev/2026/ClaudeCommunityHackathon/app/node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Helper.app/Contents/Resources: 1 (Operation not permitted)

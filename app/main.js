@@ -67,6 +67,9 @@ app.whenReady().then(() => {
     { label: 'Fly, free (demo)', click: () => send('cmd', 'free') },
     { label: 'Rest', click: () => send('cmd', 'rest') },
     { type: 'separator' },
+    { label: 'Fly: 3D model', type: 'radio', checked: true, click: () => send('cmd', 'fly3d') },
+    { label: 'Fly: 2D drawing', type: 'radio', click: () => send('cmd', 'fly2d') },
+    { type: 'separator' },
     { label: 'Reset brain', click: () => send('cmd', 'resetBrain') },
     { label: 'Quit', click: () => app.quit() },
   ]);
@@ -74,6 +77,18 @@ app.whenReady().then(() => {
   tray.on('click', () => { send('menu', true); tray.popUpContextMenu(menu); send('menu', false); });
   tray.on('right-click', () => { send('menu', true); tray.popUpContextMenu(menu); send('menu', false); });
   startBrain();
+  // FLYBREAK_SNAP=<dir>: start a break and capture the overlay at full resolution every 1.5 s, then quit
+  if (process.env.FLYBREAK_SNAP) {
+    const dir = process.env.FLYBREAK_SNAP; fs.mkdirSync(dir, { recursive: true });
+    let n = 0;
+    setTimeout(() => send('cmd', 'free'), 9000);
+    const iv = setInterval(async () => {
+      if (win.isDestroyed()) return;
+      const img = await win.webContents.capturePage();
+      fs.writeFileSync(path.join(dir, `shot-${String(n).padStart(2, '0')}.png`), img.toPNG());
+      if (++n >= 16) { clearInterval(iv); app.quit(); }
+    }, 1500);
+  }
 });
 
 ipcMain.on('log', (_e, m) => console.log('[fly]', m));

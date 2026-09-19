@@ -26,7 +26,7 @@
   };
   const hz = { escape: 0, feed: 0, backward: 0, groom: 0, forward: 0, turnL: 0, turnR: 0 };
   const brain = { online: false, speed: 0, active: 0, simMs: 0, ws: null, lastMsg: 0 };
-  const app = { phase: 'rest', timer: 0, fed: 0, msg: '', msgAlpha: 0, flash: 0, events: [], dim: 0, pulse: 0, menuLift: 0 };
+  const app = { phase: 'rest', timer: 0, fed: 0, msg: '', msgAlpha: 0, flash: 0, events: [], dim: 0, pulse: 0, menuLift: 0, use3d: true };
   const senses = { sugar: 0, looming: 0 };
   const dust = Array.from({ length: 70 }, () => ({ x: Math.random() * W, y: Math.random() * H, vx: (Math.random() - 0.5) * 0.25, vy: -0.05 - Math.random() * 0.12, r: 0.6 + Math.random() * 1.4, s: 0.3 + Math.random() * 0.7, o: Math.random() * TAU }));
   const particles = Array.from({ length: 60 }, (_, i) => ({
@@ -61,6 +61,7 @@
     if (cmd === 'free') startBreak(1e9);
     if (cmd === 'rest') { app.phase = 'rest'; clearSugar(); goHome(); gsap.to(app, { dim: 0, duration: 1 }); say('Resting.'); }
     if (cmd === 'resetBrain') brain.ws?.send(JSON.stringify({ reset: true }));
+    if (cmd === 'fly3d' || cmd === 'fly2d') { app.use3d = cmd === 'fly3d'; const gl = document.getElementById('gl'); if (gl) gl.style.display = app.use3d ? '' : 'none'; if (!app.use3d && window.FLY3D) window.FLY3D.setCubes([], 64); say(app.use3d ? 'Fly: 3D model' : 'Fly: 2D drawing'); }
   }
 
   // The ritual: the fly lives inside the notch. The stage dims, the fly emerges from the notch and flies
@@ -190,7 +191,7 @@
         fly.mode = 'landing'; fly.speed = 0; fly.roll = 0; fly.feedCube = cube; fly.z = 78 + 50 * fly.alt;   // start the descent from flight height
         event('LB3 → MN9: proboscis extension, feeding', `${feedHz.toFixed(0)} Hz`);
         const top = 64 * 0.95 * (0.5 + 0.5 * cube.amount);
-        if (window.FLY3D) gsap.to(fly, { alt: 0, x: cube.x, y: cube.y + 32, z: top, heading: Math.PI / 2 + (Math.random() - 0.5) * 0.6, duration: 0.75, ease: 'power2.inOut',
+        if (app.use3d && window.FLY3D) gsap.to(fly, { alt: 0, x: cube.x, y: cube.y + 32, z: top, heading: Math.PI / 2 + (Math.random() - 0.5) * 0.6, duration: 0.75, ease: 'power2.inOut',
           onComplete: () => { fly.mode = 'feed'; fly.flying = false; fly.feeding = true; fly.hold = 1.6; fly.stepping = false; } });
         else gsap.to(fly, { alt: 0, x: cube.x + 3, y: cube.y + 22 + 9 * fly.scale, heading: -Math.PI / 2, duration: 0.5, ease: 'power2.out',
           onComplete: () => { fly.mode = 'feed'; fly.flying = false; fly.feeding = true; fly.hold = 1.6; } });
@@ -360,8 +361,9 @@
     window.FlyAudio?.update(fly, app.phase, dt);
     body(dt, cube);
     drawLight(t);
-    if (window.FLY3D) window.FLY3D.setCubes(sugar.cubes, 64); else for (const c of sugar.cubes) drawSugar(ctx, c.x, c.y, c.amount, t, 24);
-    if (window.FLY3D) { drawAura(); window.FLY3D.render(fly, dt); } else drawFly(ctx, fly, t);
+    const three = app.use3d && window.FLY3D;
+    if (three) window.FLY3D.setCubes(sugar.cubes, 64); else for (const c of sugar.cubes) drawSugar(ctx, c.x, c.y, c.amount, t, 24);
+    if (three) { drawAura(); window.FLY3D.render(fly, dt); } else if (!fly.hiding) drawFly(ctx, fly, t);
     drawHUD();
     requestAnimationFrame(frame);
   }
